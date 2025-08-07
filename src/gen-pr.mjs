@@ -5,7 +5,16 @@
 import minimist from "minimist";
 import readline from "readline";
 import { getConfig, generatePrompt } from "./common.mjs";
-const argv = minimist(process.argv.slice(2));
+import { configureGithubToken, showTokenConfigHelp } from "./token-config.mjs";
+
+const argv = minimist(process.argv.slice(2), {
+    alias: {
+        g: "global",
+    },
+});
+
+// Extract positional arguments (non-option arguments)
+const positionalArgs = argv._;
 
 const postToGithub = async (url, data, token) => {
     const response = await fetch(url, {
@@ -23,15 +32,61 @@ const postToGithub = async (url, data, token) => {
     return response.json();
 };
 
+const showUsage = () => {
+    console.log("\n📋 gen-pr - GitHub Pull Request Generator");
+    console.log("=".repeat(45));
+    console.log("Usage:");
+    console.log("  gen-pr <sourceBranch> <targetBranch> [jiraTickets] [options]");
+    console.log("  gen-pr --create-token [--global | -g]");
+    console.log("  gen-pr --help");
+    console.log("");
+    console.log("Arguments:");
+    console.log("  sourceBranch           Source branch to merge from");
+    console.log("  targetBranch           Target branch to merge into");
+    console.log("  jiraTickets            Comma-separated JIRA ticket IDs (optional)");
+    console.log("");
+    console.log("Options:");
+    console.log("  --create-token         Configure GitHub Personal Access Token");
+    console.log("  --global, -g           Save token globally (use with --create-token)");
+    console.log("  --help                 Show this help message");
+    console.log("");
+    console.log("Examples:");
+    console.log("  gen-pr feature/new-ui main");
+    console.log("  gen-pr feature/login develop PROJ-123,PROJ-456");
+    console.log("  gen-pr --create-token");
+    console.log("  gen-pr --create-token --global");
+    console.log("");
+    showTokenConfigHelp();
+};
+
 const main = async () => {
+    // Handle help
+    if (argv.help) {
+        showUsage();
+        process.exit(0);
+    }
+
+    // Handle token configuration
+    if (argv["create-token"]) {
+        try {
+            await configureGithubToken(argv.global || argv.g);
+            process.exit(0);
+        } catch (error) {
+            console.error("❌ Token configuration failed:", error.message);
+            process.exit(1);
+        }
+    }
+
+    // Extract positional arguments
+    const sourceBranch = positionalArgs[0];
+    const targetBranch = positionalArgs[1];
+    const jiraTickets = positionalArgs[2] || "";
+
     // Check for required arguments
-    const sourceBranch = argv.source;
-    const targetBranch = argv.target;
-    const jiraTickets = argv.jira || "";
     if (!sourceBranch || !targetBranch) {
-        console.log(
-            "Usage: gen-pr --source <sourceBranch> --target <targetBranch> [--jira <JIRA-123,JIRA-456>]"
-        );
+        console.log("❌ Error: Missing required arguments");
+        console.log("💡 You need to provide source and target branches");
+        showUsage();
         process.exit(1);
     }
 
@@ -39,8 +94,40 @@ const main = async () => {
         input: process.stdin,
         output: process.stdout,
     });
-    const config = await getConfig();
+
+    let config;
+    try {
+        config = await getConfig();
+    } catch {
+        console.log("❌ Error: No configuration found.");
+        console.log("💡 Run 'gen-pr --create-token' to set up your GitHub token first.");
+        rl.close();
+        process.exit(1);
+    }
+
     const { githubToken, openaiToken, githubRepo } = config;
+
+    if (!githubToken) {
+        console.log("❌ Error: GitHub token not found in configuration.");
+        console.log("💡 Run 'gen-pr --create-token' to set up your GitHub token.");
+        rl.close();
+        process.exit(1);
+    }
+
+    if (!openaiToken) {
+        console.log("❌ Error: OpenAI token not found in configuration.");
+        console.log("💡 Please add 'openaiToken' to your .gen-mr/config.json file.");
+        rl.close();
+        process.exit(1);
+    }
+
+    if (!githubRepo) {
+        console.log("❌ Error: GitHub repository not found in configuration.");
+        console.log("💡 Please add 'githubRepo' to your .gen-mr/config.json file.");
+        console.log("   Example config format: owner/repository-name");
+        rl.close();
+        process.exit(1);
+    }
     const aiResult = await generatePrompt(openaiToken, sourceBranch, targetBranch, jiraTickets);
     const [title, ...descArr] = aiResult.split("\n");
     const description = descArr.join("\n");
