@@ -238,3 +238,6 @@ out/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Configuration directory with sensitive tokens
+.gen-mr/
