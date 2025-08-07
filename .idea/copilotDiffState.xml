@@ -3,6 +3,47 @@
   <component name="CopilotDiffPersistence">
     <option name="pendingDiffs">
       <map>
+        <entry key="$PROJECT_DIR$/.eslintignore">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/.eslintignore" />
+              <option name="updatedContent" value="node_modules/&#10;dist/&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/.eslintrc.js">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/.eslintrc.js" />
+              <option name="updatedContent" value="module.exports = {&#10;  env: {&#10;    es2021: true,&#10;    node: true,&#10;  },&#10;  extends: [&quot;eslint:recommended&quot;, &quot;plugin:prettier/recommended&quot;],&#10;  parserOptions: {&#10;    ecmaVersion: 12,&#10;    sourceType: &quot;module&quot;,&#10;  },&#10;  plugins: [&quot;prettier&quot;],&#10;  rules: {&#10;    &quot;prettier/prettier&quot;: &quot;error&quot;,&#10;    semi: [&quot;error&quot;, &quot;always&quot;],&#10;    quotes: [&quot;error&quot;, &quot;double&quot;],&#10;    &quot;no-unused-vars&quot;: &quot;warn&quot;,&#10;    &quot;no-console&quot;: &quot;off&quot;,&#10;  },&#10;};&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/.eslintrc.json">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/.eslintrc.json" />
+              <option name="originalContent" value="{&#10;  &quot;env&quot;: {&#10;    &quot;es2021&quot;: true,&#10;    &quot;node&quot;: true&#10;  },&#10;  &quot;extends&quot;: [&quot;eslint:recommended&quot;],&#10;  &quot;parserOptions&quot;: {&#10;    &quot;ecmaVersion&quot;: 12,&#10;    &quot;sourceType&quot;: &quot;module&quot;&#10;  },&#10;  &quot;rules&quot;: {&#10;    &quot;semi&quot;: [&quot;error&quot;, &quot;always&quot;],&#10;    &quot;quotes&quot;: [&quot;error&quot;, &quot;single&quot;],&#10;    &quot;no-unused-vars&quot;: &quot;warn&quot;,&#10;    &quot;no-console&quot;: &quot;off&quot;&#10;  }&#10;}&#10;&#10;" />
+              <option name="updatedContent" value="{&#10;  &quot;env&quot;: {&#10;    &quot;es2021&quot;: true,&#10;    &quot;node&quot;: true&#10;  },&#10;  &quot;extends&quot;: [&quot;eslint:recommended&quot;, &quot;plugin:prettier/recommended&quot;],&#10;  &quot;parserOptions&quot;: {&#10;    &quot;ecmaVersion&quot;: 12,&#10;    &quot;sourceType&quot;: &quot;module&quot;&#10;  },&#10;  &quot;plugins&quot;: [&quot;prettier&quot;],&#10;  &quot;rules&quot;: {&#10;    &quot;prettier/prettier&quot;: &quot;error&quot;,&#10;    &quot;semi&quot;: [&quot;error&quot;, &quot;always&quot;],&#10;    &quot;quotes&quot;: [&quot;error&quot;, &quot;single&quot;],&#10;    &quot;no-unused-vars&quot;: &quot;warn&quot;,&#10;    &quot;no-console&quot;: &quot;off&quot;&#10;  }&#10;}" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/.eslintrc.mjs">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/.eslintrc.mjs" />
+              <option name="updatedContent" value="export default {&#10;  env: {&#10;    es2021: true,&#10;    node: true,&#10;  },&#10;  extends: [&quot;eslint:recommended&quot;, &quot;plugin:prettier/recommended&quot;],&#10;  parserOptions: {&#10;    ecmaVersion: 12,&#10;    sourceType: &quot;module&quot;,&#10;  },&#10;  plugins: [&quot;prettier&quot;],&#10;  rules: {&#10;    &quot;prettier/prettier&quot;: &quot;error&quot;,&#10;    semi: [&quot;error&quot;, &quot;always&quot;],&#10;    quotes: [&quot;error&quot;, &quot;double&quot;],&#10;    &quot;no-unused-vars&quot;: &quot;warn&quot;,&#10;    &quot;no-console&quot;: &quot;off&quot;,&#10;  },&#10;};&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/.prettierrc">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/.prettierrc" />
+              <option name="updatedContent" value="{&#10;  &quot;semi&quot;: true,&#10;  &quot;singleQuote&quot;: true,&#10;  &quot;trailingComma&quot;: &quot;es5&quot;,&#10;  &quot;printWidth&quot;: 100&#10;}&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
         <entry key="$PROJECT_DIR$/common.js">
           <value>
             <PendingDiffInfo>
@@ -27,6 +68,15 @@
               <option name="filePath" value="$PROJECT_DIR$/gen-pr.js" />
               <option name="originalContent" value="#!/usr/bin/env node&#10;// gen-pr.js&#10;// CLI tool for creating GitHub pull requests with AI-generated name/description&#10;&#10;const axios = require('axios');&#10;const { getConfig, generatePrompt } = require('./common');&#10;const argv = require('minimist')(process.argv.slice(2));&#10;&#10;async function main() {&#10;    // Check for required arguments&#10;    const sourceBranch = argv.source;&#10;    const targetBranch = argv.target;&#10;    const jiraTickets = argv.jira || '';&#10;    if (!sourceBranch || !targetBranch) {&#10;        console.log('Usage: gen-pr --source &lt;sourceBranch&gt; --target &lt;targetBranch&gt; [--jira &lt;JIRA-123,JIRA-456&gt;]');&#10;        process.exit(1);&#10;    }&#10;&#10;    const rl = require('readline').createInterface({ input: process.stdin, output: process.stdout });&#10;    const config = getConfig();&#10;    const { githubToken, openaiToken, githubRepo } = config;&#10;    const aiResult = await generatePrompt(openaiToken, sourceBranch, targetBranch, jiraTickets);&#10;    const [title, ...descArr] = aiResult.split('\n');&#10;    const description = descArr.join('\n');&#10;    console.log('\nGenerated Title:', title);&#10;    console.log('Generated Description:', description);&#10;    rl.question('Do you want to edit the title/description? (y/N): ', async (edit) =&gt; {&#10;        let finalTitle = title;&#10;        let finalDescription = description;&#10;        if (edit.toLowerCase() === 'y') {&#10;            finalTitle = await new Promise(res =&gt; rl.question('New Title: ', res));&#10;            finalDescription = await new Promise(res =&gt; rl.question('New Description: ', res));&#10;        }&#10;        // Create PR via GitHub API&#10;        try {&#10;            const res = await axios.post(`https://api.github.com/repos/${githubRepo}/pulls`, {&#10;                head: sourceBranch,&#10;                base: targetBranch,&#10;                title: finalTitle,&#10;                body: finalDescription&#10;            }, {&#10;                headers: { 'Authorization': `token ${githubToken}` }&#10;            });&#10;            console.log('Pull request created:', res.data.html_url);&#10;        } catch (err) {&#10;            console.error('Failed to create pull request:', err.response?.data || err.message);&#10;        }&#10;        rl.close();&#10;    });&#10;}&#10;&#10;main();&#10;" />
               <option name="updatedContent" value="#!/usr/bin/env node&#10;// gen-pr.js&#10;// CLI tool for creating GitHub pull requests with AI-generated name/description&#10;&#10;import axios from 'axios';&#10;import minimist from 'minimist';&#10;import readline from 'readline';&#10;import { getConfig, generatePrompt } from './common.mjs';&#10;const argv = minimist(process.argv.slice(2));&#10;&#10;async function main() {&#10;    // Check for required arguments&#10;    const sourceBranch = argv.source;&#10;    const targetBranch = argv.target;&#10;    const jiraTickets = argv.jira || '';&#10;    if (!sourceBranch || !targetBranch) {&#10;        console.log('Usage: gen-pr --source &lt;sourceBranch&gt; --target &lt;targetBranch&gt; [--jira &lt;JIRA-123,JIRA-456&gt;]');&#10;        process.exit(1);&#10;    }&#10;&#10;    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });&#10;    const config = getConfig();&#10;    const { githubToken, openaiToken, githubRepo } = config;&#10;    const aiResult = await generatePrompt(openaiToken, sourceBranch, targetBranch, jiraTickets);&#10;    const [title, ...descArr] = aiResult.split('\n');&#10;    const description = descArr.join('\n');&#10;    console.log('\nGenerated Title:', title);&#10;    console.log('Generated Description:', description);&#10;    rl.question('Do you want to edit the title/description? (y/N): ', async (edit) =&gt; {&#10;        let finalTitle = title;&#10;        let finalDescription = description;&#10;        if (edit.toLowerCase() === 'y') {&#10;            finalTitle = await new Promise(res =&gt; rl.question('New Title: ', res));&#10;            finalDescription = await new Promise(res =&gt; rl.question('New Description: ', res));&#10;        }&#10;        // Create PR via GitHub API&#10;        try {&#10;            const res = await axios.post(`https://api.github.com/repos/${githubRepo}/pulls`, {&#10;                head: sourceBranch,&#10;                base: targetBranch,&#10;                title: finalTitle,&#10;                body: finalDescription&#10;            }, {&#10;                headers: { 'Authorization': `token ${githubToken}` }&#10;            });&#10;            console.log('Pull request created:', res.data.html_url);&#10;        } catch (err) {&#10;            console.error('Failed to create pull request:', err.response?.data || err.message);&#10;        }&#10;        rl.close();&#10;    });&#10;}&#10;&#10;main();" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/package.json">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/package.json" />
+              <option name="originalContent" value="{&#10;  &quot;name&quot;: &quot;gen-mr&quot;,&#10;  &quot;version&quot;: &quot;1.0.0&quot;,&#10;  &quot;description&quot;: &quot;CLI tools to generate and create GitLab merge requests and GitHub pull requests with AI-generated name and description.&quot;,&#10;  &quot;type&quot;: &quot;module&quot;,&#10;  &quot;main&quot;: &quot;gen-mr.mjs&quot;,&#10;  &quot;bin&quot;: {&#10;    &quot;gen-mr&quot;: &quot;./gen-mr.mjs&quot;,&#10;    &quot;gen-pr&quot;: &quot;./gen-pr.mjs&quot;&#10;  },&#10;  &quot;scripts&quot;: {&#10;    &quot;start:mr&quot;: &quot;node gen-mr.mjs&quot;,&#10;    &quot;start:pr&quot;: &quot;node gen-pr.mjs&quot;&#10;  },&#10;  &quot;dependencies&quot;: {&#10;    &quot;axios&quot;: &quot;^1.6.0&quot;,&#10;    &quot;axios&quot;: &quot;^1.6.0&quot;,&#10;    &quot;minimist&quot;: &quot;^1.2.8&quot;&#10;  },&#10;  &quot;keywords&quot;: [&#10;    &quot;gitlab&quot;,&#10;    &quot;github&quot;,&#10;    &quot;merge-request&quot;,&#10;    &quot;pull-request&quot;,&#10;    &quot;cli&quot;,&#10;    &quot;openai&quot;,&#10;    &quot;ai&quot;&#10;  ],&#10;  &quot;author&quot;: &quot;&quot;,&#10;  &quot;license&quot;: &quot;MIT&quot;&#10;&#10;}&#10;&#10;" />
+              <option name="updatedContent" value="{&#10;  &quot;name&quot;: &quot;gen-mr&quot;,&#10;  &quot;version&quot;: &quot;1.0.0&quot;,&#10;  &quot;description&quot;: &quot;CLI tools to generate and create GitLab merge requests and GitHub pull requests with AI-generated name and description.&quot;,&#10;  &quot;type&quot;: &quot;module&quot;,&#10;  &quot;main&quot;: &quot;gen-mr.mjs&quot;,&#10;  &quot;bin&quot;: {&#10;    &quot;gen-mr&quot;: &quot;./gen-mr.mjs&quot;,&#10;    &quot;gen-pr&quot;: &quot;./gen-pr.mjs&quot;&#10;  },&#10;  &quot;scripts&quot;: {&#10;    &quot;start:mr&quot;: &quot;node gen-mr.mjs&quot;,&#10;    &quot;start:pr&quot;: &quot;node gen-pr.mjs&quot;,&#10;    &quot;lint&quot;: &quot;eslint .&quot;,&#10;    &quot;format&quot;: &quot;prettier --write .&quot;&#10;  },&#10;  &quot;dependencies&quot;: {&#10;    &quot;minimist&quot;: &quot;^1.2.8&quot;&#10;  },&#10;  &quot;keywords&quot;: [&#10;    &quot;gitlab&quot;,&#10;    &quot;github&quot;,&#10;    &quot;merge-request&quot;,&#10;    &quot;pull-request&quot;,&#10;    &quot;cli&quot;,&#10;    &quot;openai&quot;,&#10;    &quot;ai&quot;&#10;  ],&#10;  &quot;author&quot;: &quot;&quot;,&#10;  &quot;license&quot;: &quot;MIT&quot;&#10;}" />
             </PendingDiffInfo>
           </value>
         </entry>
