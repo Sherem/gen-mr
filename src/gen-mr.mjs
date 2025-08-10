@@ -4,7 +4,7 @@
 
 import minimist from "minimist";
 import readline from "readline";
-import { getConfig, getEditorCommand, openInEditor } from "./config/common.mjs";
+import { getConfig, getEditorCommand, openInEditor, showCurrentConfig } from "./config/common.mjs";
 import { configureChatGPTToken, showAiTokenConfigHelp } from "./ai/chatgpt.mjs";
 import { setChatGPTModel, showChatGPTModelsHelp, CHATGPT_MODELS } from "./ai/chatgpt.mjs";
 import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
@@ -41,6 +41,7 @@ const showUsage = () => {
     console.log("  gen-mr --create-ai-token <LLM> [--global | -g]");
     console.log("  gen-mr --use-model <model> [--global | -g]");
     console.log("  gen-mr --configure-editor [--global | -g]");
+    console.log("  gen-mr --show-config [--global | -g]");
     console.log("  gen-mr --help");
     console.log("");
     console.log("Arguments:");
@@ -55,6 +56,8 @@ const showUsage = () => {
     console.log("                         Use with --global to save globally");
     console.log("  --configure-editor     Configure editor command for advanced editing");
     console.log("                         Use with --global to save globally");
+    console.log("  --show-config          Display current configuration");
+    console.log("                         Use with --global to show only global config");
     console.log("  --help                 Show this help message");
     console.log("");
     console.log("Examples:");
@@ -65,6 +68,8 @@ const showUsage = () => {
     console.log("  gen-mr --use-model gpt-4o");
     console.log("  gen-mr --configure-editor");
     console.log("  gen-mr --configure-editor --global");
+    console.log("  gen-mr --show-config");
+    console.log("  gen-mr --show-config --global");
     console.log("");
     showAiTokenConfigHelp();
     showChatGPTModelsHelp();
@@ -131,6 +136,18 @@ const main = async () => {
         } catch (error) {
             console.error("❌ Failed to set model:", error.message);
             console.log("ℹ️  Supported models:", CHATGPT_MODELS.join(", "));
+            process.exit(1);
+        }
+    }
+
+    // Handle show config
+    if (argv["show-config"]) {
+        const isGlobal = argv.global || argv.g;
+        try {
+            await showCurrentConfig(isGlobal);
+            process.exit(0);
+        } catch (error) {
+            console.error("❌ Failed to show configuration:", error.message);
             process.exit(1);
         }
     }

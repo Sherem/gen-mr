@@ -97,3 +97,140 @@ export const openInEditor = async (content, fileExtension = ".md") => {
         }
     }
 };
+
+/**
+ * Display current configuration
+ * @param {boolean} isGlobal - Whether to show global configuration specifically
+ */
+export const showCurrentConfig = async (isGlobal = false) => {
+    console.log("\n⚙️  Current Configuration");
+    console.log("=".repeat(40));
+
+    const localPath = path.resolve(process.cwd(), ".gen-mr/config.json");
+    const globalPath = path.resolve(os.homedir(), ".gen-mr/config.json");
+
+    let localConfig = null;
+    let globalConfig = null;
+
+    // Try to read local config
+    try {
+        await fs.access(localPath);
+        const data = await fs.readFile(localPath, "utf8");
+        localConfig = JSON.parse(data);
+    } catch {
+        // Local config doesn't exist or is invalid
+    }
+
+    // Try to read global config
+    try {
+        await fs.access(globalPath);
+        const data = await fs.readFile(globalPath, "utf8");
+        globalConfig = JSON.parse(data);
+    } catch {
+        // Global config doesn't exist or is invalid
+    }
+
+    if (isGlobal) {
+        // Show only global configuration
+        console.log("📍 Global Configuration:");
+        console.log(`   Path: ${globalPath}`);
+
+        if (globalConfig) {
+            console.log("   Status: ✅ Found");
+            displayConfigContents(globalConfig);
+        } else {
+            console.log("   Status: ❌ Not found");
+        }
+    } else {
+        // Show both configurations with priority explanation
+        console.log("📍 Configuration Locations (Local takes priority over Global):");
+        console.log("");
+
+        // Local config
+        console.log("🏠 Local Configuration:");
+        console.log(`   Path: ${localPath}`);
+        if (localConfig) {
+            console.log("   Status: ✅ Found");
+            displayConfigContents(localConfig);
+        } else {
+            console.log("   Status: ❌ Not found");
+        }
+
+        console.log("");
+
+        // Global config
+        console.log("🌍 Global Configuration:");
+        console.log(`   Path: ${globalPath}`);
+        if (globalConfig) {
+            console.log("   Status: ✅ Found");
+            displayConfigContents(globalConfig);
+        } else {
+            console.log("   Status: ❌ Not found");
+        }
+
+        console.log("");
+
+        // Show effective configuration
+        const effectiveConfig = localConfig || globalConfig;
+        if (effectiveConfig) {
+            console.log("🎯 Effective Configuration (currently in use):");
+            console.log(`   Source: ${localConfig ? "Local" : "Global"}`);
+            displayConfigContents(effectiveConfig);
+        } else {
+            console.log("🎯 Effective Configuration: ❌ No configuration found");
+            console.log("");
+            console.log("💡 To get started, configure the following:");
+            console.log("   • GitHub token: gen-pr --create-token");
+            console.log("   • AI token: gen-pr --create-ai-token ChatGPT");
+            console.log("   • Editor: gen-pr --configure-editor");
+            console.log("   • AI model: gen-pr --use-model gpt-4o");
+        }
+    }
+
+    console.log("");
+};
+
+/**
+ * Display the contents of a configuration object
+ * @param {Object} config - The configuration object to display
+ */
+const displayConfigContents = (config) => {
+    const keys = Object.keys(config);
+    if (keys.length === 0) {
+        console.log("   Contents: (empty)");
+        return;
+    }
+
+    console.log("   Contents:");
+
+    // GitHub Token
+    if (config.githubToken) {
+        const masked = `${config.githubToken.substring(0, 4)}${"*".repeat(Math.max(0, config.githubToken.length - 8))}${config.githubToken.substring(config.githubToken.length - 4)}`;
+        console.log(`     • GitHub Token: ${masked}`);
+    }
+
+    // OpenAI Token
+    if (config.openaiToken) {
+        const masked = `${config.openaiToken.substring(0, 4)}${"*".repeat(Math.max(0, config.openaiToken.length - 8))}${config.openaiToken.substring(config.openaiToken.length - 4)}`;
+        console.log(`     • OpenAI Token: ${masked}`);
+    }
+
+    // OpenAI Model
+    if (config.openaiModel) {
+        console.log(`     • OpenAI Model: ${config.openaiModel}`);
+    }
+
+    // Editor Command
+    if (config.editorCommand) {
+        console.log(`     • Editor Command: ${config.editorCommand}`);
+    }
+
+    // Show any other unexpected keys
+    const knownKeys = ["githubToken", "openaiToken", "openaiModel", "editorCommand"];
+    const unknownKeys = keys.filter((key) => !knownKeys.includes(key));
+    if (unknownKeys.length > 0) {
+        unknownKeys.forEach((key) => {
+            console.log(`     • ${key}: ${config[key]}`);
+        });
+    }
+};
