@@ -2,13 +2,7 @@
 // PR generation workflow extracted from gen-pr.mjs
 
 import readline from "readline";
-import {
-    getConfig,
-    getEditorCommand,
-    editPullRequestContent,
-    openInEditor,
-} from "./config/common.mjs";
-import { getRepositoryFromRemote } from "./git-utils.mjs";
+import { getEditorCommand, editPullRequestContent, openInEditor } from "./config/common.mjs";
 import {
     generateMergeRequestSafe,
     getDefaultPromptOptions,
@@ -281,79 +275,24 @@ const handleUserInteraction = async (
  * @param {string} sourceBranch - Source branch to merge from
  * @param {string} targetBranch - Target branch to merge into
  * @param {string} jiraTickets - Comma-separated JIRA ticket IDs (optional)
+ * @param {object} config - Configuration object containing tokens
+ * @param {string} githubRepo - GitHub repository name in format "owner/repo"
  * @returns {Promise<void>}
  */
-export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets = "") => {
+export const executePRWorkflow = async (
+    sourceBranch,
+    targetBranch,
+    jiraTickets = "",
+    config,
+    githubRepo
+) => {
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
     });
 
     try {
-        // Get configuration
-        let config;
-        try {
-            config = await getConfig();
-        } catch {
-            console.log("❌ Error: No configuration found.");
-            console.log("💡 Run 'gen-pr --create-token' to set up your GitHub token first.");
-            rl.close();
-            process.exit(1);
-        }
-
-        const { githubToken, openaiToken } = config;
-
-        if (!githubToken) {
-            console.log("❌ Error: GitHub token not found in configuration.");
-            console.log("💡 Run 'gen-pr --create-token' to set up your GitHub token.");
-            rl.close();
-            process.exit(1);
-        }
-
-        if (!openaiToken) {
-            console.log("❌ Error: OpenAI token not found in configuration.");
-            console.log("💡 Please add 'openaiToken' to your .gen-mr/config.json file.");
-            rl.close();
-            process.exit(1);
-        }
-
-        // Detect repository type from git remote
-        let repoInfo;
-        try {
-            repoInfo = await getRepositoryFromRemote();
-        } catch (error) {
-            console.log("❌ Error: Failed to detect repository from git remote.");
-            console.log(`💡 ${error.message}`);
-            console.log(
-                "💡 Make sure you're in a git repository with an origin remote configured."
-            );
-            rl.close();
-            process.exit(1);
-        }
-
-        // Check repository type and provide appropriate suggestions
-        if (repoInfo.type === "gitlab") {
-            console.log("🦊 GitLab repository detected!");
-            console.log("💡 For GitLab repositories, consider using gen-mr instead of gen-pr.");
-            console.log(`   Repository: ${repoInfo.fullName} on ${repoInfo.hostname}`);
-            rl.close();
-            process.exit(1);
-        } else if (repoInfo.type === "unknown") {
-            console.log("❌ Error: Unknown repository type detected.");
-            console.log(`   Repository host: ${repoInfo.hostname}`);
-            console.log("💡 This tool currently supports GitHub repositories only.");
-            console.log("💡 For GitLab repositories, use gen-mr instead.");
-            rl.close();
-            process.exit(1);
-        } else if (repoInfo.type !== "github") {
-            console.log("❌ Error: Unsupported repository type.");
-            console.log(`   Repository host: ${repoInfo.hostname}`);
-            console.log("💡 This tool supports GitHub repositories only.");
-            rl.close();
-            process.exit(1);
-        }
-
-        const githubRepo = repoInfo.fullName;
+        const { githubToken } = config;
 
         const promptOptions = getDefaultPromptOptions({
             includeGitDiff: true,
@@ -370,11 +309,14 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
             githubToken
         );
 
+        let result;
+
         if (existingPR) {
             console.log("📋 Found existing pull request:");
-            console.log(`   Title: ${existingPR.title}`);
             console.log(`   URL: ${existingPR.html_url}`);
             console.log(`   Status: ${existingPR.state}`);
+            console.log(`   Title: ${existingPR.title}`);
+            console.log(`   Description:\n${existingPR.body || ""}`);
             console.log("");
 
             console.log("What would you like to do?");
@@ -387,14 +329,24 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
             switch (choice.trim()) {
                 case "1":
                     console.log("🔄 Will regenerate with fresh content...");
-                    // previousResult remains null for fresh generation
+                    result = await generateMergeRequestSafe(
+                        config,
+                        sourceBranch,
+                        targetBranch,
+                        jiraTickets,
+                        {
+                            aiModel: "ChatGPT",
+                            promptOptions,
+                            verbose: true,
+                        }
+                    );
                     break;
                 case "2":
                     console.log("🔄 Will regenerate existing PR with additional instructions...");
                     // Use regenerateMergeRequest function to handle editor and instructions
                     try {
                         // Create a temporary result object with existing PR data
-                        const regeneratedResult = await regenerateMergeRequest(
+                        result = await regenerateMergeRequest(
                             config,
                             sourceBranch,
                             targetBranch,
@@ -405,34 +357,6 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
                                 promptOptions: promptOptions || getDefaultPromptOptions(),
                             }
                         );
-
-                        // Start with existing PR content and proceed to the menu system
-                        console.log("\n" + "=".repeat(60));
-                        console.log("📝 Existing Pull Request");
-                        console.log("=".repeat(60));
-                        console.log(`\n🏷️  Title: ${regeneratedResult.title}`);
-                        console.log(`\n📄 Description:\n${regeneratedResult.description}`);
-                        console.log("=".repeat(60));
-
-                        // Handle user interaction with menu system - user can choose to regenerate with instructions
-
-                        console.log("\n" + "=".repeat(60));
-
-                        // Handle user interaction with menu system - user can choose to regenerate with instructions
-                        await handleUserInteraction(
-                            rl,
-                            config,
-                            sourceBranch,
-                            targetBranch,
-                            jiraTickets,
-                            regeneratedResult,
-                            {
-                                githubRepo,
-                                githubToken,
-                                existingPR,
-                            }
-                        );
-                        return; // Exit the function since we've handled the full workflow
                     } catch (error) {
                         console.error("❌ Failed to regenerate with instructions:", error.message);
                         console.log("💡 Falling back to fresh generation...");
@@ -445,11 +369,9 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
                     rl.close();
                     process.exit(0);
             }
-        }
+        } else {
+            // Generate merge request using the new modular approach
 
-        // Generate merge request using the new modular approach
-        let result;
-        try {
             console.log("🔍 Generating AI-powered pull request...");
 
             result = await generateMergeRequestSafe(
@@ -463,20 +385,16 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
                     verbose: true,
                 }
             );
-
-            console.log("\n" + "=".repeat(60));
-            const actionText = existingPR ? "Updated Pull Request" : "Generated Pull Request";
-            console.log(`📝 ${actionText}`);
-            console.log("=".repeat(60));
-            console.log(`\n🏷️  Title: ${result.title}`);
-            console.log(`\n📄 Description:\n${result.description}`);
-            console.log(`\n🤖 Generated using: ${result.aiModel} (${result.model})`);
-            console.log("=".repeat(60));
-        } catch (error) {
-            console.error("❌ Failed to generate pull request:", error.message);
-            rl.close();
-            process.exit(1);
         }
+
+        console.log("\n" + "=".repeat(60));
+        const actionText = existingPR ? "Updated Pull Request" : "Generated Pull Request";
+        console.log(`📝 ${actionText}`);
+        console.log("=".repeat(60));
+        console.log(`\n🏷️  Title: ${result.title}`);
+        console.log(`\n📄 Description:\n${result.description}`);
+        console.log(`\n🤖 Generated using: ${result.aiModel} (${result.model})`);
+        console.log("=".repeat(60));
 
         // Handle user interaction with menu system
         await handleUserInteraction(rl, config, sourceBranch, targetBranch, jiraTickets, result, {
