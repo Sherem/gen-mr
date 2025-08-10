@@ -4,12 +4,38 @@ AI-powered CLI tools to generate and create GitLab merge requests and GitHub pul
 
 ## Features
 
-- 🤖 **AI-Generated Content**: Uses OpenAI GPT-3.5-turbo to generate meaningful merge request/pull request titles and descriptions
+- 🤖 **AI-Generated Content**: Uses OpenAI GPT models to generate meaningful merge request/pull request titles and descriptions
 - 🔧 **GitLab Integration**: Create merge requests directly via GitLab API
 - 🐙 **GitHub Integration**: Create pull requests directly via GitHub API
 - 🎫 **JIRA Integration**: Include JIRA ticket references in generated content
 - ⚙️ **Flexible Configuration**: Support for both local and global configuration
 - 📝 **Interactive Editing**: Option to edit AI-generated content before submission
+- 🏗️ **Modular Architecture**: Clean separation of concerns with git operations, AI requests, and configuration management
+- 📊 **Rich Context Analysis**: Includes git diffs, commit messages, and changed files for better AI-generated content
+
+## Architecture
+
+The project is organized into a modular architecture for better maintainability and extensibility:
+
+```
+src/
+├── ai/
+│   └── chatgpt.mjs          # ChatGPT API integration and token management
+├── common.mjs               # Configuration management utilities
+├── git-utils.mjs            # Git operations and prompt generation
+├── merge-request-generator.mjs  # Main functionality for generating MR/PR content
+├── token-config.mjs         # GitHub token configuration
+├── gen-mr.mjs              # GitLab merge request CLI
+└── gen-pr.mjs              # GitHub pull request CLI
+```
+
+### Key Modules
+
+- **`ai/chatgpt.mjs`**: Handles all ChatGPT API requests, token validation, and model selection
+- **`git-utils.mjs`**: Manages git operations (diffs, commit messages, file changes) and prompt generation
+- **`merge-request-generator.mjs`**: Core functionality that orchestrates git analysis and AI generation
+- **`common.mjs`**: Configuration file management (local and global)
+- **`token-config.mjs`**: GitHub token setup and validation
 
 ## Installation
 
