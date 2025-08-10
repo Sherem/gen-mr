@@ -364,26 +364,40 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
             githubToken
         );
 
+        let previousResult = null;
         if (existingPR) {
             console.log("📋 Found existing pull request:");
             console.log(`   Title: ${existingPR.title}`);
             console.log(`   URL: ${existingPR.html_url}`);
             console.log(`   Status: ${existingPR.state}`);
+            console.log("");
 
-            const updateChoice = await new Promise((res) =>
-                rl.question(
-                    "Do you want to update the existing PR with new AI-generated content? (y/N): ",
-                    res
-                )
-            );
+            console.log("What would you like to do?");
+            console.log("1. 🔄 Regenerate PR (fresh generation)");
+            console.log("2. 🔄 Regenerate PR and include title and description of existing PR");
+            console.log("3. ❌ Cancel");
 
-            if (updateChoice.toLowerCase() !== "y") {
-                console.log("❌ Operation cancelled. Existing PR will remain unchanged.");
-                rl.close();
-                process.exit(0);
+            const choice = await new Promise((res) => rl.question("Choose an option (1-3): ", res));
+
+            switch (choice.trim()) {
+                case "1":
+                    console.log("🔄 Will regenerate with fresh content...");
+                    // previousResult remains null for fresh generation
+                    break;
+                case "2":
+                    console.log("🔄 Will regenerate including existing PR content...");
+                    previousResult = {
+                        title: existingPR.title,
+                        description: existingPR.body || "",
+                    };
+                    console.log(`📋 Including existing PR: "${previousResult.title}"`);
+                    break;
+                case "3":
+                default:
+                    console.log("❌ Operation cancelled. Existing PR will remain unchanged.");
+                    rl.close();
+                    process.exit(0);
             }
-
-            console.log("🔄 Will update existing pull request...");
         }
 
         // Generate merge request using the new modular approach
@@ -395,7 +409,12 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
                 includeGitDiff: true,
                 includeCommitMessages: true,
                 includeChangedFiles: true,
+                previousResult: previousResult,
             });
+
+            if (previousResult) {
+                console.log("🔄 Regenerating with existing PR context...");
+            }
 
             result = await generateMergeRequestSafe(
                 config,
