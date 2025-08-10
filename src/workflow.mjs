@@ -118,11 +118,14 @@ const handleUserInteraction = async (
 
         if (hasChanges) {
             console.log("4. ↩️  Rollback to original version");
+            console.log("5. ❌ Cancel (exit without saving)");
+        } else {
+            console.log("4. ❌ Cancel (exit without saving)");
         }
 
         console.log("=".repeat(50));
 
-        const maxOption = hasChanges ? "4" : "3";
+        const maxOption = hasChanges ? "5" : "4";
 
         return new Promise((resolve) => {
             rl.question(`Choose an option (1-${maxOption}): `, (choice) => {
@@ -250,11 +253,24 @@ const handleUserInteraction = async (
                 if (hasChanges) {
                     rollbackToOriginal();
                 } else {
-                    console.log("❌ Invalid option. Please choose 1-3.");
+                    // Cancel option when no changes
+                    console.log("❌ Operation cancelled. Exiting without saving.");
+                    rl.close();
+                    process.exit(0);
+                }
+                break;
+            case "5":
+                if (hasChanges) {
+                    // Cancel option when there are changes
+                    console.log("❌ Operation cancelled. Exiting without saving.");
+                    rl.close();
+                    process.exit(0);
+                } else {
+                    console.log(`❌ Invalid option. Please choose 1-4.`);
                 }
                 break;
             default:
-                console.log(`❌ Invalid option. Please choose 1-${hasChanges ? "4" : "3"}.`);
+                console.log(`❌ Invalid option. Please choose 1-${hasChanges ? "5" : "4"}.`);
                 break;
         }
     }
