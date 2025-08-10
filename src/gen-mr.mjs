@@ -4,7 +4,12 @@
 
 import minimist from "minimist";
 import readline from "readline";
-import { getConfig, getEditorCommand, openInEditor, showCurrentConfig } from "./config/common.mjs";
+import {
+    getConfig,
+    getEditorCommand,
+    editPullRequestContent,
+    showCurrentConfig,
+} from "./config/common.mjs";
 import { configureChatGPTToken, showAiTokenConfigHelp } from "./ai/chatgpt.mjs";
 import { setChatGPTModel, showChatGPTModelsHelp, CHATGPT_MODELS } from "./ai/chatgpt.mjs";
 import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
@@ -226,42 +231,21 @@ const main = async () => {
 
         if (edit.toLowerCase() === "y") {
             if (hasEditor) {
-                const useEditor = await new Promise((res) =>
-                    rl.question("Use editor for editing? (y/N): ", res)
-                );
+                try {
+                    console.log("🚀 Opening editor...");
+                    const editedContent = await editPullRequestContent(
+                        finalTitle,
+                        finalDescription,
+                        ".md"
+                    );
 
-                if (useEditor.toLowerCase() === "y") {
-                    try {
-                        console.log("🚀 Opening editor...");
-                        const editorContent = `${finalTitle}\n\n---\n\n${finalDescription}`;
-                        const editedContent = await openInEditor(editorContent, ".md");
+                    finalTitle = editedContent.title;
+                    finalDescription = editedContent.description;
 
-                        // Parse the edited content back into title and description
-                        const lines = editedContent.split("\n");
-                        const separatorIndex = lines.findIndex((line) => line.trim() === "---");
-
-                        if (separatorIndex !== -1) {
-                            finalTitle = lines.slice(0, separatorIndex).join("\n").trim();
-                            finalDescription = lines
-                                .slice(separatorIndex + 1)
-                                .join("\n")
-                                .trim();
-                        } else {
-                            // If no separator found, treat first line as title, rest as description
-                            finalTitle = lines[0] || finalTitle;
-                            finalDescription = lines.slice(1).join("\n").trim() || finalDescription;
-                        }
-
-                        console.log("✅ Content updated from editor");
-                    } catch (error) {
-                        console.error("❌ Editor error:", error.message);
-                        console.log("💡 Falling back to manual input");
-                        finalTitle = await new Promise((res) => rl.question("New Title: ", res));
-                        finalDescription = await new Promise((res) =>
-                            rl.question("New Description: ", res)
-                        );
-                    }
-                } else {
+                    console.log("✅ Content updated from editor");
+                } catch (error) {
+                    console.error("❌ Editor error:", error.message);
+                    console.log("💡 Falling back to manual input");
                     finalTitle = await new Promise((res) => rl.question("New Title: ", res));
                     finalDescription = await new Promise((res) =>
                         rl.question("New Description: ", res)

@@ -99,6 +99,97 @@ export const openInEditor = async (content, fileExtension = ".md") => {
 };
 
 /**
+ * Edit pull request title and description using the configured editor
+ * Creates a temporary file with title on first line, followed by separator and description
+ * @param {string} title - The current title
+ * @param {string} description - The current description
+ * @param {string} fileExtension - File extension for syntax highlighting (default: '.md')
+ * @returns {Promise<{title: string, description: string}>} The edited title and description
+ */
+export const editPullRequestContent = async (title, description, fileExtension = ".md") => {
+    const editorCommand = await getEditorCommand();
+
+    if (!editorCommand) {
+        throw new Error(
+            "No editor configured. Run 'gen-pr --configure-editor' or 'gen-mr --configure-editor' to set up an editor."
+        );
+    }
+
+    const tempDir = os.tmpdir();
+    const tempFileName = `gen-mr-pr-edit-${Date.now()}${fileExtension}`;
+    const tempFilePath = path.join(tempDir, tempFileName);
+
+    try {
+        // Create content with title on first line, separator, then description
+        const content = `${title}\n\n---\n\n${description}`;
+
+        // Write content to temporary file
+        await fs.writeFile(tempFilePath, content, "utf8");
+
+        // Execute editor command
+        const { spawn } = await import("child_process");
+        const command = editorCommand.replace(/\{line\}/g, "1").replace(/\{file\}/g, tempFilePath);
+        const commandParts = command.split(/\s+/);
+        const executable = commandParts[0];
+        const args = commandParts.slice(1).concat([tempFilePath]);
+
+        await new Promise((resolve, reject) => {
+            const child = spawn(executable, args, {
+                stdio: "inherit",
+                shell: true,
+            });
+
+            child.on("close", (code) => {
+                if (code === 0) {
+                    resolve();
+                } else {
+                    reject(new Error(`Editor exited with code ${code}`));
+                }
+            });
+
+            child.on("error", (error) => {
+                reject(new Error(`Failed to start editor: ${error.message}`));
+            });
+        });
+
+        // Read the edited content
+        const editedContent = await fs.readFile(tempFilePath, "utf8");
+
+        // Parse the edited content back into title and description
+        const lines = editedContent.split("\n");
+        const separatorIndex = lines.findIndex((line) => line.trim() === "---");
+
+        let finalTitle = title;
+        let finalDescription = description;
+
+        if (separatorIndex !== -1) {
+            // Separator found - everything before is title, everything after is description
+            finalTitle = lines.slice(0, separatorIndex).join("\n").trim();
+            finalDescription = lines
+                .slice(separatorIndex + 1)
+                .join("\n")
+                .trim();
+        } else {
+            // No separator found - treat first line as title, rest as description
+            finalTitle = lines[0] || title;
+            finalDescription = lines.slice(1).join("\n").trim() || description;
+        }
+
+        return {
+            title: finalTitle,
+            description: finalDescription,
+        };
+    } finally {
+        // Clean up temporary file
+        try {
+            await fs.unlink(tempFilePath);
+        } catch {
+            // Ignore cleanup errors
+        }
+    }
+};
+
+/**
  * Display current configuration
  * @param {boolean} isGlobal - Whether to show global configuration specifically
  */

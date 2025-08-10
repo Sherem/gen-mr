@@ -2,7 +2,7 @@
 // PR generation workflow extracted from gen-pr.mjs
 
 import readline from "readline";
-import { getConfig, getEditorCommand, openInEditor } from "./config/common.mjs";
+import { getConfig, getEditorCommand, editPullRequestContent } from "./config/common.mjs";
 import { getRepositoryFromRemote } from "./git-utils.mjs";
 import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
 import { findExistingPullRequest, createOrUpdatePullRequest } from "./github-utils.mjs";
@@ -159,7 +159,7 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
         const hasEditor = editorCommand !== null;
 
         const editPrompt = hasEditor
-            ? "Do you want to edit the title/description? (y/N/e for editor): "
+            ? "Do you want to edit the title/description? (y/N): "
             : "Do you want to edit the title/description? (y/N): ";
 
         rl.question(editPrompt, async (edit) => {
@@ -167,36 +167,32 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
             let finalDescription = result.description;
 
             if (edit.toLowerCase() === "y") {
-                finalTitle = await new Promise((res) => rl.question("New Title: ", res));
-                finalDescription = await new Promise((res) =>
-                    rl.question("New Description: ", res)
-                );
-            } else if (hasEditor && edit.toLowerCase() === "e") {
-                try {
-                    console.log("🚀 Opening editor...");
-                    const editorContent = `${finalTitle}\n\n---\n\n${finalDescription}`;
-                    const editedContent = await openInEditor(editorContent, ".md");
+                if (hasEditor) {
+                    try {
+                        console.log("🚀 Opening editor...");
+                        const editedContent = await editPullRequestContent(
+                            finalTitle,
+                            finalDescription,
+                            ".md"
+                        );
 
-                    // Parse the edited content back into title and description
-                    const lines = editedContent.split("\n");
-                    const separatorIndex = lines.findIndex((line) => line.trim() === "---");
+                        finalTitle = editedContent.title;
+                        finalDescription = editedContent.description;
 
-                    if (separatorIndex !== -1) {
-                        finalTitle = lines.slice(0, separatorIndex).join("\n").trim();
-                        finalDescription = lines
-                            .slice(separatorIndex + 1)
-                            .join("\n")
-                            .trim();
-                    } else {
-                        // If no separator found, treat first line as title, rest as description
-                        finalTitle = lines[0] || finalTitle;
-                        finalDescription = lines.slice(1).join("\n").trim() || finalDescription;
+                        console.log("✅ Content updated from editor");
+                    } catch (error) {
+                        console.error("❌ Editor error:", error.message);
+                        console.log("💡 Falling back to manual input");
+                        finalTitle = await new Promise((res) => rl.question("New Title: ", res));
+                        finalDescription = await new Promise((res) =>
+                            rl.question("New Description: ", res)
+                        );
                     }
-
-                    console.log("✅ Content updated from editor");
-                } catch (error) {
-                    console.error("❌ Editor error:", error.message);
-                    console.log("💡 Falling back to original content");
+                } else {
+                    finalTitle = await new Promise((res) => rl.question("New Title: ", res));
+                    finalDescription = await new Promise((res) =>
+                        rl.question("New Description: ", res)
+                    );
                 }
             }
 
