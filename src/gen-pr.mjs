@@ -3,10 +3,9 @@
 // CLI tool for creating GitHub pull requests with AI-generated name/description
 
 import minimist from "minimist";
-import readline from "readline";
-import { getConfig } from "./common.mjs";
-import { configureGithubToken, showTokenConfigHelp } from "./token-config.mjs";
-import { getRepositoryFromRemote } from "./git-utils.mjs";
+import { configureGithubToken, showTokenConfigHelp } from "./config/token-config.mjs";
+import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
+import { showCurrentConfig } from "./config/common.mjs";
 import {
     configureChatGPTToken,
     showAiTokenConfigHelp,
@@ -14,7 +13,7 @@ import {
     showChatGPTModelsHelp,
     CHATGPT_MODELS,
 } from "./ai/chatgpt.mjs";
-import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
+import { executePRWorkflow } from "./workflow.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -25,74 +24,6 @@ const argv = minimist(process.argv.slice(2), {
 // Extract positional arguments (non-option arguments)
 const positionalArgs = argv._;
 
-const postToGithub = async (url, data, token) => {
-    const response = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `token ${token}`,
-        },
-        body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err);
-    }
-    return response.json();
-};
-
-const getFromGithub = async (url, token) => {
-    const response = await fetch(url, {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `token ${token}`,
-        },
-    });
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err);
-    }
-    return response.json();
-};
-
-const patchToGithub = async (url, data, token) => {
-    const response = await fetch(url, {
-        method: "PATCH",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `token ${token}`,
-        },
-        body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err);
-    }
-    return response.json();
-};
-
-/**
- * Check if a pull request already exists for the given branches
- * @param {string} githubRepo - Repository in format "owner/repo"
- * @param {string} sourceBranch - Source branch name
- * @param {string} targetBranch - Target branch name
- * @param {string} githubToken - GitHub token
- * @returns {Promise<object|null>} Existing PR object or null if not found
- */
-const findExistingPullRequest = async (githubRepo, sourceBranch, targetBranch, githubToken) => {
-    try {
-        const pulls = await getFromGithub(
-            `https://api.github.com/repos/${githubRepo}/pulls?state=open&head=${sourceBranch}&base=${targetBranch}`,
-            githubToken
-        );
-        return pulls.length > 0 ? pulls[0] : null;
-    } catch (error) {
-        console.warn("Warning: Could not check for existing pull requests:", error.message);
-        return null;
-    }
-};
-
 const showUsage = () => {
     console.log("\n📋 gen-pr - GitHub Pull Request Generator");
     console.log("=".repeat(45));
@@ -101,6 +32,8 @@ const showUsage = () => {
     console.log("  gen-pr --create-token [--global | -g]");
     console.log("  gen-pr --create-ai-token <LLM> [--global | -g]");
     console.log("  gen-pr --use-model <model> [--global | -g]");
+    console.log("  gen-pr --configure-editor [--global | -g]");
+    console.log("  gen-pr --show-config [--global | -g]");
     console.log("  gen-pr --help");
     console.log("");
     console.log("Arguments:");
@@ -115,6 +48,10 @@ const showUsage = () => {
     console.log("                         Use with --global to save globally");
     console.log("  --use-model            Select AI model (ChatGPT models only for now)");
     console.log("                         Use with --global to save globally");
+    console.log("  --configure-editor     Configure editor command for advanced editing");
+    console.log("                         Use with --global to save globally");
+    console.log("  --show-config          Display current configuration");
+    console.log("                         Use with --global to show only global config");
     console.log("  --help                 Show this help message");
     console.log("");
     console.log("Examples:");
@@ -125,10 +62,15 @@ const showUsage = () => {
     console.log("  gen-pr --create-ai-token ChatGPT");
     console.log("  gen-pr --create-ai-token ChatGPT --global");
     console.log("  gen-pr --use-model gpt-4o");
+    console.log("  gen-pr --configure-editor");
+    console.log("  gen-pr --configure-editor --global");
+    console.log("  gen-pr --show-config");
+    console.log("  gen-pr --show-config --global");
     console.log("");
     showTokenConfigHelp();
     showAiTokenConfigHelp();
     showChatGPTModelsHelp();
+    showEditorConfigHelp();
 };
 
 const main = async () => {
@@ -145,6 +87,17 @@ const main = async () => {
             process.exit(0);
         } catch (error) {
             console.error("❌ Token configuration failed:", error.message);
+            process.exit(1);
+        }
+    }
+
+    // Handle editor configuration
+    if (argv["configure-editor"]) {
+        try {
+            await configureEditor(argv.global || argv.g);
+            process.exit(0);
+        } catch (error) {
+            console.error("❌ Editor configuration failed:", error.message);
             process.exit(1);
         }
     }
@@ -196,6 +149,18 @@ const main = async () => {
         }
     }
 
+    // Handle show config
+    if (argv["show-config"]) {
+        const isGlobal = argv.global || argv.g;
+        try {
+            await showCurrentConfig(isGlobal);
+            process.exit(0);
+        } catch (error) {
+            console.error("❌ Failed to show configuration:", error.message);
+            process.exit(1);
+        }
+    }
+
     // Extract positional arguments
     const sourceBranch = positionalArgs[0];
     const targetBranch = positionalArgs[1];
@@ -209,175 +174,8 @@ const main = async () => {
         process.exit(1);
     }
 
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-
-    let config;
-    try {
-        config = await getConfig();
-    } catch {
-        console.log("❌ Error: No configuration found.");
-        console.log("💡 Run 'gen-pr --create-token' to set up your GitHub token first.");
-        rl.close();
-        process.exit(1);
-    }
-
-    const { githubToken, openaiToken } = config;
-
-    if (!githubToken) {
-        console.log("❌ Error: GitHub token not found in configuration.");
-        console.log("💡 Run 'gen-pr --create-token' to set up your GitHub token.");
-        rl.close();
-        process.exit(1);
-    }
-
-    if (!openaiToken) {
-        console.log("❌ Error: OpenAI token not found in configuration.");
-        console.log("💡 Please add 'openaiToken' to your .gen-mr/config.json file.");
-        rl.close();
-        process.exit(1);
-    }
-
-    // Detect repository type from git remote
-    let repoInfo;
-    try {
-        repoInfo = await getRepositoryFromRemote();
-    } catch (error) {
-        console.log("❌ Error: Failed to detect repository from git remote.");
-        console.log(`💡 ${error.message}`);
-        console.log("💡 Make sure you're in a git repository with an origin remote configured.");
-        rl.close();
-        process.exit(1);
-    }
-
-    // Check repository type and provide appropriate suggestions
-    if (repoInfo.type === "gitlab") {
-        console.log("🦊 GitLab repository detected!");
-        console.log("💡 For GitLab repositories, consider using gen-mr instead of gen-pr.");
-        console.log(`   Repository: ${repoInfo.fullName} on ${repoInfo.hostname}`);
-        rl.close();
-        process.exit(1);
-    } else if (repoInfo.type === "unknown") {
-        console.log("❌ Error: Unknown repository type detected.");
-        console.log(`   Repository host: ${repoInfo.hostname}`);
-        console.log("💡 This tool currently supports GitHub repositories only.");
-        console.log("💡 For GitLab repositories, use gen-mr instead.");
-        rl.close();
-        process.exit(1);
-    } else if (repoInfo.type !== "github") {
-        console.log("❌ Error: Unsupported repository type.");
-        console.log(`   Repository host: ${repoInfo.hostname}`);
-        console.log("💡 This tool supports GitHub repositories only.");
-        rl.close();
-        process.exit(1);
-    }
-
-    const githubRepo = repoInfo.fullName;
-
-    // Check if a pull request already exists for these branches
-    console.log("🔍 Checking for existing pull requests...");
-    const existingPR = await findExistingPullRequest(
-        githubRepo,
-        sourceBranch,
-        targetBranch,
-        githubToken
-    );
-
-    if (existingPR) {
-        console.log("📋 Found existing pull request:");
-        console.log(`   Title: ${existingPR.title}`);
-        console.log(`   URL: ${existingPR.html_url}`);
-        console.log(`   Status: ${existingPR.state}`);
-
-        const updateChoice = await new Promise((res) =>
-            rl.question(
-                "Do you want to update the existing PR with new AI-generated content? (y/N): ",
-                res
-            )
-        );
-
-        if (updateChoice.toLowerCase() !== "y") {
-            console.log("❌ Operation cancelled. Existing PR will remain unchanged.");
-            rl.close();
-            process.exit(0);
-        }
-
-        console.log("🔄 Will update existing pull request...");
-    }
-
-    // Generate merge request using the new modular approach
-    let result;
-    try {
-        console.log("🔍 Generating AI-powered pull request...");
-
-        const promptOptions = getDefaultPromptOptions({
-            includeGitDiff: true,
-            includeCommitMessages: true,
-            includeChangedFiles: true,
-        });
-
-        result = await generateMergeRequestSafe(config, sourceBranch, targetBranch, jiraTickets, {
-            aiModel: "ChatGPT",
-            promptOptions,
-            verbose: true,
-        });
-
-        console.log("\n" + "=".repeat(60));
-        const actionText = existingPR ? "Updated Pull Request" : "Generated Pull Request";
-        console.log(`📝 ${actionText}`);
-        console.log("=".repeat(60));
-        console.log(`\n🏷️  Title: ${result.title}`);
-        console.log(`\n📄 Description:\n${result.description}`);
-        console.log(`\n🤖 Generated using: ${result.aiModel} (${result.model})`);
-        console.log("=".repeat(60));
-    } catch (error) {
-        console.error("❌ Failed to generate pull request:", error.message);
-        rl.close();
-        process.exit(1);
-    }
-
-    rl.question("Do you want to edit the title/description? (y/N): ", async (edit) => {
-        let finalTitle = result.title;
-        let finalDescription = result.description;
-        if (edit.toLowerCase() === "y") {
-            finalTitle = await new Promise((res) => rl.question("New Title: ", res));
-            finalDescription = await new Promise((res) => rl.question("New Description: ", res));
-        }
-
-        try {
-            if (existingPR) {
-                // Update existing PR
-                const res = await patchToGithub(
-                    `https://api.github.com/repos/${githubRepo}/pulls/${existingPR.number}`,
-                    {
-                        title: finalTitle,
-                        body: finalDescription,
-                    },
-                    githubToken
-                );
-                console.log("✅ Pull request updated:", res.html_url);
-            } else {
-                // Create new PR
-                const res = await postToGithub(
-                    `https://api.github.com/repos/${githubRepo}/pulls`,
-                    {
-                        head: sourceBranch,
-                        base: targetBranch,
-                        title: finalTitle,
-                        body: finalDescription,
-                    },
-                    githubToken
-                );
-                console.log("✅ Pull request created:", res.html_url);
-            }
-        } catch (err) {
-            const actionText = existingPR ? "update" : "create";
-            console.error(`❌ Failed to ${actionText} pull request:`, err.message);
-        }
-        rl.close();
-    });
+    // Call function from workflow
+    await executePRWorkflow(sourceBranch, targetBranch, jiraTickets);
 };
 
 main();

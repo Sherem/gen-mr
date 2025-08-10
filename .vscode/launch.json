@@ -29,7 +29,7 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "args": [
-                "generate-mr",
+                "edit-mr-with-editor",
                 "main"
             ]
         }

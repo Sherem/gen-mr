@@ -21,10 +21,12 @@ The project is organized into a modular architecture for better maintainability 
 src/
 ├── ai/
 │   └── chatgpt.mjs          # ChatGPT API integration and token management
-├── common.mjs               # Configuration management utilities
+├── config/
+│   ├── common.mjs           # Configuration management utilities
+│   ├── editor-config.mjs    # Editor configuration
+│   └── token-config.mjs     # GitHub token configuration
 ├── git-utils.mjs            # Git operations and prompt generation
 ├── merge-request-generator.mjs  # Main functionality for generating MR/PR content
-├── token-config.mjs         # GitHub token configuration
 ├── gen-mr.mjs              # GitLab merge request CLI
 └── gen-pr.mjs              # GitHub pull request CLI
 ```
@@ -34,8 +36,9 @@ src/
 - **`ai/chatgpt.mjs`**: Handles all ChatGPT API requests, token validation, and model selection
 - **`git-utils.mjs`**: Manages git operations (diffs, commit messages, file changes) and prompt generation
 - **`merge-request-generator.mjs`**: Core functionality that orchestrates git analysis and AI generation
-- **`common.mjs`**: Configuration file management (local and global)
-- **`token-config.mjs`**: GitHub token setup and validation
+- **`config/common.mjs`**: Configuration file management (local and global)
+- **`config/token-config.mjs`**: GitHub token setup and validation
+- **`config/editor-config.mjs`**: Editor command configuration for advanced editing
 
 ## Installation
 
@@ -188,10 +191,19 @@ npm run format
 ```
 gen-mr/
 ├── src/
-│   ├── common.mjs          # Shared utilities and OpenAI integration
+│   ├── config/
+│   │   ├── common.mjs       # Shared utilities and configuration management
+│   │   ├── editor-config.mjs # Editor configuration utilities
+│   │   └── token-config.mjs  # Token configuration utilities
+│   ├── ai/
+│   │   └── chatgpt.mjs      # ChatGPT API integration
 │   ├── gen-mr.mjs          # GitLab merge request CLI
 │   ├── gen-pr.mjs          # GitHub pull request CLI
-│   └── token-config.mjs    # Token configuration utilities
+│   ├── git-utils.mjs       # Git operations utilities
+│   ├── github-utils.mjs    # GitHub API utilities
+│   ├── merge-request-generator.mjs # Core MR/PR generation logic
+│   ├── prompt-generator.mjs # AI prompt generation
+│   └── workflow.mjs        # PR workflow orchestration
 ├── package.json
 ├── eslint.config.mjs
 └── README.md
