@@ -4,7 +4,7 @@
 
 import minimist from "minimist";
 import readline from "readline";
-import { getConfig, generatePrompt } from "./common.mjs";
+import { getConfig } from "./common.mjs";
 import { configureGithubToken, showTokenConfigHelp } from "./token-config.mjs";
 import {
     configureChatGPTToken,
@@ -13,6 +13,11 @@ import {
     showChatGPTModelsHelp,
     CHATGPT_MODELS,
 } from "./ai/chatgpt.mjs";
+import {
+    generateMergeRequestSafe,
+    getDefaultPromptOptions,
+    validateMergeRequestParams,
+} from "./merge-request-generator.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -193,21 +198,40 @@ const main = async () => {
         rl.close();
         process.exit(1);
     }
-    const model = config.openaiModel; // optional
-    const aiResult = await generatePrompt(
-        openaiToken,
-        sourceBranch,
-        targetBranch,
-        jiraTickets,
-        model
-    );
-    const [title, ...descArr] = aiResult.split("\n");
-    const description = descArr.join("\n");
-    console.log("\nGenerated Title:", title);
-    console.log("Generated Description:", description);
+
+    // Generate merge request using the new modular approach
+    let result;
+    try {
+        console.log("🔍 Generating AI-powered pull request...");
+
+        const promptOptions = getDefaultPromptOptions({
+            includeGitDiff: true,
+            includeCommitMessages: true,
+            includeChangedFiles: true,
+        });
+
+        result = await generateMergeRequestSafe(config, sourceBranch, targetBranch, jiraTickets, {
+            aiModel: "ChatGPT",
+            promptOptions,
+            verbose: true,
+        });
+
+        console.log("\n" + "=".repeat(60));
+        console.log("📝 Generated Pull Request");
+        console.log("=".repeat(60));
+        console.log(`\n🏷️  Title: ${result.title}`);
+        console.log(`\n📄 Description:\n${result.description}`);
+        console.log(`\n🤖 Generated using: ${result.aiModel} (${result.model})`);
+        console.log("=".repeat(60));
+    } catch (error) {
+        console.error("❌ Failed to generate pull request:", error.message);
+        rl.close();
+        process.exit(1);
+    }
+
     rl.question("Do you want to edit the title/description? (y/N): ", async (edit) => {
-        let finalTitle = title;
-        let finalDescription = description;
+        let finalTitle = result.title;
+        let finalDescription = result.description;
         if (edit.toLowerCase() === "y") {
             finalTitle = await new Promise((res) => rl.question("New Title: ", res));
             finalDescription = await new Promise((res) => rl.question("New Description: ", res));
