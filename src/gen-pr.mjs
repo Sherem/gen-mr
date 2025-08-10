@@ -6,6 +6,7 @@ import minimist from "minimist";
 import readline from "readline";
 import { getConfig } from "./common.mjs";
 import { configureGithubToken, showTokenConfigHelp } from "./token-config.mjs";
+import { getRepositoryFromRemote } from "./git-utils.mjs";
 import {
     configureChatGPTToken,
     showAiTokenConfigHelp,
@@ -13,11 +14,7 @@ import {
     showChatGPTModelsHelp,
     CHATGPT_MODELS,
 } from "./ai/chatgpt.mjs";
-import {
-    generateMergeRequestSafe,
-    getDefaultPromptOptions,
-    validateMergeRequestParams,
-} from "./merge-request-generator.mjs";
+import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -175,7 +172,7 @@ const main = async () => {
         process.exit(1);
     }
 
-    const { githubToken, openaiToken, githubRepo } = config;
+    const { githubToken, openaiToken } = config;
 
     if (!githubToken) {
         console.log("❌ Error: GitHub token not found in configuration.");
@@ -191,13 +188,41 @@ const main = async () => {
         process.exit(1);
     }
 
-    if (!githubRepo) {
-        console.log("❌ Error: GitHub repository not found in configuration.");
-        console.log("💡 Please add 'githubRepo' to your .gen-mr/config.json file.");
-        console.log("   Example config format: owner/repository-name");
+    // Detect repository type from git remote
+    let repoInfo;
+    try {
+        repoInfo = await getRepositoryFromRemote();
+    } catch (error) {
+        console.log("❌ Error: Failed to detect repository from git remote.");
+        console.log(`💡 ${error.message}`);
+        console.log("💡 Make sure you're in a git repository with an origin remote configured.");
         rl.close();
         process.exit(1);
     }
+
+    // Check repository type and provide appropriate suggestions
+    if (repoInfo.type === "gitlab") {
+        console.log("🦊 GitLab repository detected!");
+        console.log("💡 For GitLab repositories, consider using gen-mr instead of gen-pr.");
+        console.log(`   Repository: ${repoInfo.fullName} on ${repoInfo.hostname}`);
+        rl.close();
+        process.exit(1);
+    } else if (repoInfo.type === "unknown") {
+        console.log("❌ Error: Unknown repository type detected.");
+        console.log(`   Repository host: ${repoInfo.hostname}`);
+        console.log("💡 This tool currently supports GitHub repositories only.");
+        console.log("💡 For GitLab repositories, use gen-mr instead.");
+        rl.close();
+        process.exit(1);
+    } else if (repoInfo.type !== "github") {
+        console.log("❌ Error: Unsupported repository type.");
+        console.log(`   Repository host: ${repoInfo.hostname}`);
+        console.log("💡 This tool supports GitHub repositories only.");
+        rl.close();
+        process.exit(1);
+    }
+
+    const githubRepo = repoInfo.fullName;
 
     // Generate merge request using the new modular approach
     let result;

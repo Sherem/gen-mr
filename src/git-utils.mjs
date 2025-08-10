@@ -80,6 +80,99 @@ export const getRepoInfo = async () => {
 };
 
 /**
+ * Get the origin remote URL
+ * @returns {Promise<string>} Origin remote URL
+ */
+export const getOriginRemote = async () => {
+    try {
+        const { stdout } = await execAsync("git config --get remote.origin.url");
+        return stdout.trim();
+    } catch (error) {
+        throw new Error(`Failed to get origin remote: ${error.message}`);
+    }
+};
+
+/**
+ * Parse repository information from git remote URL
+ * @param {string} remoteUrl - Git remote URL
+ * @returns {object} Parsed repository information
+ */
+export const parseRepoFromRemote = (remoteUrl) => {
+    // Remove .git suffix if present
+    const cleanUrl = remoteUrl.replace(/\.git$/, "");
+
+    // Handle SSH URLs (git@hostname:owner/repo)
+    const sshMatch = cleanUrl.match(/^git@([^:]+):(.+)/);
+    if (sshMatch) {
+        const hostname = sshMatch[1];
+        const repoPath = sshMatch[2];
+        return {
+            hostname,
+            fullName: repoPath,
+            owner: repoPath.split("/")[0],
+            name: repoPath.split("/")[1],
+        };
+    }
+
+    // Handle HTTPS URLs (https://hostname/owner/repo)
+    const httpsMatch = cleanUrl.match(/^https?:\/\/([^/]+)\/(.+)/);
+    if (httpsMatch) {
+        const hostname = httpsMatch[1];
+        const repoPath = httpsMatch[2];
+        return {
+            hostname,
+            fullName: repoPath,
+            owner: repoPath.split("/")[0],
+            name: repoPath.split("/")[1],
+        };
+    }
+
+    throw new Error(`Unable to parse repository URL: ${remoteUrl}`);
+};
+
+/**
+ * Detect repository type from hostname
+ * @param {string} hostname - Repository hostname
+ * @returns {string} Repository type ('github', 'gitlab', 'unknown')
+ */
+export const detectRepoType = (hostname) => {
+    const lowerHostname = hostname.toLowerCase();
+
+    if (lowerHostname === "github.com") {
+        return "github";
+    }
+
+    if (lowerHostname.includes("gitlab")) {
+        return "gitlab";
+    }
+
+    return "unknown";
+};
+
+/**
+ * Get repository information from git origin remote
+ * @returns {Promise<object>} Repository type and details
+ */
+export const getRepositoryFromRemote = async () => {
+    try {
+        const remoteUrl = await getOriginRemote();
+        const repoInfo = parseRepoFromRemote(remoteUrl);
+        const repoType = detectRepoType(repoInfo.hostname);
+
+        return {
+            type: repoType,
+            hostname: repoInfo.hostname,
+            fullName: repoInfo.fullName,
+            owner: repoInfo.owner,
+            name: repoInfo.name,
+            remoteUrl,
+        };
+    } catch (error) {
+        throw new Error(`Failed to detect repository from remote: ${error.message}`);
+    }
+};
+
+/**
  * Generate a comprehensive prompt for AI to create merge request title and description
  * @param {string} sourceBranch - Source branch name
  * @param {string} targetBranch - Target branch name
