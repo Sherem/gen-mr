@@ -1,0 +1,193 @@
+import { describe, test, expect, jest, beforeEach } from "@jest/globals";
+import {
+    generateMergeRequestPrompt,
+    generateDefaultPrompt,
+    generateMinimalPrompt,
+    generateComprehensivePrompt,
+} from "../prompt-generator.mjs";
+
+// Mock git-utils module
+jest.mock("../git-utils.mjs", () => ({
+    getGitDiff: jest.fn(),
+    getCommitMessages: jest.fn(),
+    getChangedFiles: jest.fn(),
+}));
+
+import { getGitDiff, getCommitMessages, getChangedFiles } from "../git-utils.mjs";
+
+describe("prompt-generator", () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    describe("generateMergeRequestPrompt", () => {
+        test("should generate basic prompt with branch names", async () => {
+            // Mock git functions to return empty results
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+
+            expect(result).toContain(
+                "Generate a professional merge request title and description for merging 'feature-branch' into 'main'"
+            );
+            expect(result).toContain("Please provide:");
+            expect(result).toContain("1. A concise, descriptive title for the merge request");
+            expect(result).toContain("2. A detailed description that includes:");
+        });
+
+        test("should include JIRA tickets when provided", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt(
+                "feature-branch",
+                "main",
+                "PROJ-123,PROJ-456"
+            );
+
+            expect(result).toContain("Related JIRA tickets: PROJ-123,PROJ-456");
+        });
+
+        test("should include commit messages when available", async () => {
+            getCommitMessages.mockResolvedValue(["Add new feature", "Fix bug in component"]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+
+            expect(result).toContain("Commit messages:");
+            expect(result).toContain("- Add new feature");
+            expect(result).toContain("- Fix bug in component");
+        });
+
+        test("should include changed files when available", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue(["src/component.js", "src/utils.js"]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+
+            expect(result).toContain("Changed files:");
+            expect(result).toContain("- src/component.js");
+            expect(result).toContain("- src/utils.js");
+        });
+
+        test("should include git diff when available", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("+ added line\n- removed line");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+
+            expect(result).toContain("Code changes");
+            expect(result).toContain("```diff");
+            expect(result).toContain("+ added line");
+            expect(result).toContain("- removed line");
+        });
+
+        test("should include additional instructions when provided", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main", "", {
+                additionalInstructions: "Please emphasize security improvements",
+            });
+
+            expect(result).toContain("Additional instructions from user:");
+            expect(result).toContain("Please emphasize security improvements");
+        });
+
+        test("should include previous result context when regenerating", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("");
+
+            const previousResult = {
+                title: "Previous Title",
+                description: "Previous Description",
+            };
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main", "", {
+                previousResult,
+            });
+
+            expect(result).toContain("Previous merge request details:");
+            expect(result).toContain("Title: Previous Title");
+            expect(result).toContain("Description: Previous Description");
+        });
+
+        test("should handle git errors gracefully", async () => {
+            getCommitMessages.mockRejectedValue(new Error("Git error"));
+            getChangedFiles.mockRejectedValue(new Error("Git error"));
+            getGitDiff.mockRejectedValue(new Error("Git error"));
+
+            const consoleSpy = jest.spyOn(console, "warn").mockImplementation(() => { });
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+
+            expect(result).toContain("Generate a professional merge request title and description");
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining("Warning: Could not gather git context:")
+            );
+
+            consoleSpy.mockRestore();
+        });
+
+        test("should respect maxDiffLines option", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("line1\nline2\nline3\nline4\nline5");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main", "", {
+                maxDiffLines: 3,
+            });
+
+            expect(result).toContain("showing first 3 lines");
+            expect(result).toContain("... (diff truncated for brevity)");
+        });
+    });
+
+    describe("generateDefaultPrompt", () => {
+        test("should call generateMergeRequestPrompt with default options", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateDefaultPrompt("feature-branch", "main", "PROJ-123");
+
+            expect(result).toContain("Generate a professional merge request title and description");
+            expect(result).toContain("Related JIRA tickets: PROJ-123");
+        });
+    });
+
+    describe("generateMinimalPrompt", () => {
+        test("should generate prompt without git diff", async () => {
+            getCommitMessages.mockResolvedValue(["Test commit"]);
+            getChangedFiles.mockResolvedValue(["file.js"]);
+            getGitDiff.mockResolvedValue("some diff");
+
+            const result = await generateMinimalPrompt("feature-branch", "main");
+
+            expect(result).toContain("Commit messages:");
+            expect(result).toContain("Changed files:");
+            expect(result).not.toContain("Code changes");
+            expect(result).not.toContain("```diff");
+        });
+    });
+
+    describe("generateComprehensivePrompt", () => {
+        test("should generate prompt with extended diff", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("comprehensive diff content");
+
+            const result = await generateComprehensivePrompt("feature-branch", "main");
+
+            expect(result).toContain("showing first 2000 lines");
+        });
+    });
+});
