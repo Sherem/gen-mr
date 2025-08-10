@@ -158,11 +158,7 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
         const editorCommand = await getEditorCommand();
         const hasEditor = editorCommand !== null;
 
-        const editPrompt = hasEditor
-            ? "Do you want to edit the title/description? (y/N): "
-            : "Do you want to edit the title/description? (y/N): ";
-
-        rl.question(editPrompt, async (edit) => {
+        rl.question("Do you want to edit the title/description? (y/N):", async (edit) => {
             let finalTitle = result.title;
             let finalDescription = result.description;
 
