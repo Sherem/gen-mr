@@ -22,9 +22,24 @@ export const generateMergeRequestPrompt = async (
         includeCommitMessages = true,
         includeChangedFiles = true,
         maxDiffLines = 1000,
+        additionalInstructions = "",
+        previousResult = null,
     } = options;
 
     let prompt = `Generate a professional merge request title and description for merging '${sourceBranch}' into '${targetBranch}'.`;
+
+    // Add previous result context if regenerating
+    if (previousResult) {
+        prompt += "\n\nPrevious merge request details:";
+        prompt += `\nTitle: ${previousResult.title}`;
+        prompt += `\nDescription: ${previousResult.description}`;
+        prompt += "\nPlease improve upon this previous version.";
+    }
+
+    // Add additional user instructions if provided
+    if (additionalInstructions && additionalInstructions.trim()) {
+        prompt += `\n\nAdditional instructions from user:\n${additionalInstructions}`;
+    }
 
     // Add JIRA tickets context
     if (jiraTickets && jiraTickets.trim()) {

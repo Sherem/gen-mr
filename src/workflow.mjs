@@ -2,10 +2,263 @@
 // PR generation workflow extracted from gen-pr.mjs
 
 import readline from "readline";
-import { getConfig, getEditorCommand, editPullRequestContent } from "./config/common.mjs";
+import {
+    getConfig,
+    getEditorCommand,
+    editPullRequestContent,
+    openInEditor,
+} from "./config/common.mjs";
 import { getRepositoryFromRemote } from "./git-utils.mjs";
-import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
+import {
+    generateMergeRequestSafe,
+    getDefaultPromptOptions,
+    generateMergeRequest,
+} from "./merge-request-generator.mjs";
 import { findExistingPullRequest, createOrUpdatePullRequest } from "./github-utils.mjs";
+
+/**
+ * Regenerate merge request with additional user instructions
+ * @param {object} config - Configuration object
+ * @param {string} sourceBranch - Source branch name
+ * @param {string} targetBranch - Target branch name
+ * @param {string} jiraTickets - JIRA ticket IDs
+ * @param {object} previousResult - Previously generated MR result
+ * @param {object} options - Generation options
+ * @returns {Promise<object>} Regenerated merge request data
+ */
+const regenerateMergeRequest = async (
+    config,
+    sourceBranch,
+    targetBranch,
+    jiraTickets,
+    previousResult,
+    options = {}
+) => {
+    console.log("🚀 Opening editor for additional instructions...");
+
+    // Create template content with comments explaining usage
+    const templateContent = `# Additional Instructions for Merge Request Generation
+# 
+# Lines starting with '#' are comments and will be ignored.
+# Add any additional instructions below to customize the merge request.
+# If you don't need any additional instructions, save and close this file.
+#
+# Examples:
+# - Focus on security aspects
+# - Emphasize performance improvements
+# - Mention specific testing requirements
+# - Add context about architectural decisions
+#
+# Your instructions:
+
+`;
+
+    try {
+        // Open editor with template
+        const userInput = await openInEditor(templateContent, ".txt");
+
+        // Filter out comments (lines starting with #) and get user instructions
+        const instructions = userInput
+            .split("\n")
+            .filter((line) => !line.trim().startsWith("#"))
+            .join("\n")
+            .trim();
+
+        // Create enhanced prompt with previous result and user instructions
+        const { promptOptions = {} } = options;
+        const enhancedOptions = {
+            ...promptOptions,
+            additionalInstructions: instructions,
+            previousResult: previousResult,
+        };
+
+        console.log("🔄 Regenerating with additional instructions...");
+
+        return await generateMergeRequest(config, sourceBranch, targetBranch, jiraTickets, {
+            ...options,
+            promptOptions: enhancedOptions,
+        });
+    } catch (error) {
+        console.error("❌ Error during regeneration:", error.message);
+        throw error;
+    }
+};
+
+/**
+ * Handle user interaction with menu system for MR operations
+ * @param {object} rl - Readline interface
+ * @param {object} config - Configuration object
+ * @param {string} sourceBranch - Source branch name
+ * @param {string} targetBranch - Target branch name
+ * @param {string} jiraTickets - JIRA ticket IDs
+ * @param {object} initialResult - Initial MR generation result
+ * @param {object} prConfig - PR configuration (repo, token, etc.)
+ * @returns {Promise<void>}
+ */
+const handleUserInteraction = async (
+    rl,
+    config,
+    sourceBranch,
+    targetBranch,
+    jiraTickets,
+    initialResult,
+    prConfig
+) => {
+    let currentResult = { ...initialResult };
+    const originalResult = { ...initialResult };
+    let hasChanges = false;
+
+    const showMenu = async () => {
+        console.log("\n" + "=".repeat(50));
+        console.log("📋 What would you like to do?");
+        console.log("=".repeat(50));
+        console.log("1. 💾 Save/Update this merge request");
+        console.log("2. ✏️  Edit title and description");
+        console.log("3. 🔄 Regenerate with additional instructions");
+
+        if (hasChanges) {
+            console.log("4. ↩️  Rollback to original version");
+        }
+
+        console.log("=".repeat(50));
+
+        const maxOption = hasChanges ? "4" : "3";
+
+        return new Promise((resolve) => {
+            rl.question(`Choose an option (1-${maxOption}): `, (choice) => {
+                resolve(choice.trim());
+            });
+        });
+    };
+
+    const editWithEditor = async () => {
+        const editorCommand = await getEditorCommand();
+
+        if (editorCommand) {
+            try {
+                console.log("🚀 Opening editor...");
+                const editedContent = await editPullRequestContent(
+                    currentResult.title,
+                    currentResult.description,
+                    ".md"
+                );
+
+                currentResult.title = editedContent.title;
+                currentResult.description = editedContent.description;
+                hasChanges = true;
+
+                console.log("✅ Content updated from editor");
+                showCurrentResult();
+            } catch (error) {
+                console.error("❌ Editor error:", error.message);
+                console.log("💡 Falling back to manual input");
+                await editManually();
+            }
+        } else {
+            await editManually();
+        }
+    };
+
+    const editManually = async () => {
+        return new Promise((resolve) => {
+            rl.question("New Title: ", (title) => {
+                rl.question("New Description: ", (description) => {
+                    currentResult.title = title || currentResult.title;
+                    currentResult.description = description || currentResult.description;
+                    hasChanges = true;
+                    console.log("✅ Content updated manually");
+                    showCurrentResult();
+                    resolve();
+                });
+            });
+        });
+    };
+
+    const regenerateWithInstructions = async () => {
+        try {
+            const regeneratedResult = await regenerateMergeRequest(
+                config,
+                sourceBranch,
+                targetBranch,
+                jiraTickets,
+                { title: currentResult.title, description: currentResult.description },
+                {
+                    aiModel: initialResult.aiModel,
+                    promptOptions: initialResult.promptOptions || getDefaultPromptOptions(),
+                }
+            );
+
+            currentResult.title = regeneratedResult.title;
+            currentResult.description = regeneratedResult.description;
+            hasChanges = true;
+
+            console.log("\n" + "=".repeat(60));
+            console.log("🔄 Regenerated Pull Request");
+            console.log("=".repeat(60));
+            showCurrentResult();
+        } catch (error) {
+            console.error("❌ Failed to regenerate:", error.message);
+            console.log("💡 Continuing with current content...");
+        }
+    };
+
+    const rollbackToOriginal = () => {
+        currentResult = { ...originalResult };
+        hasChanges = false;
+        console.log("↩️ Rolled back to original version");
+        showCurrentResult();
+    };
+
+    const showCurrentResult = () => {
+        console.log(`\n🏷️  Title: ${currentResult.title}`);
+        console.log(`\n📄 Description:\n${currentResult.description}`);
+        console.log("=".repeat(60));
+    };
+
+    const saveMergeRequest = async () => {
+        try {
+            await createOrUpdatePullRequest({
+                githubRepo: prConfig.githubRepo,
+                sourceBranch,
+                targetBranch,
+                title: currentResult.title,
+                description: currentResult.description,
+                githubToken: prConfig.githubToken,
+                existingPR: prConfig.existingPR,
+            });
+        } catch {
+            // Error handling is already done in createOrUpdatePullRequest
+        }
+        rl.close();
+    };
+
+    // Main interaction loop
+    while (true) {
+        const choice = await showMenu();
+
+        switch (choice) {
+            case "1":
+                await saveMergeRequest();
+                return;
+            case "2":
+                await editWithEditor();
+                break;
+            case "3":
+                await regenerateWithInstructions();
+                break;
+            case "4":
+                if (hasChanges) {
+                    rollbackToOriginal();
+                } else {
+                    console.log("❌ Invalid option. Please choose 1-3.");
+                }
+                break;
+            default:
+                console.log(`❌ Invalid option. Please choose 1-${hasChanges ? "4" : "3"}.`);
+                break;
+        }
+    }
+};
 
 /**
  * Main PR generation workflow
@@ -154,58 +407,11 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
             process.exit(1);
         }
 
-        // Handle user interaction for editing and creating/updating PR
-        const editorCommand = await getEditorCommand();
-        const hasEditor = editorCommand !== null;
-
-        rl.question("Do you want to edit the title/description? (y/N):", async (edit) => {
-            let finalTitle = result.title;
-            let finalDescription = result.description;
-
-            if (edit.toLowerCase() === "y") {
-                if (hasEditor) {
-                    try {
-                        console.log("🚀 Opening editor...");
-                        const editedContent = await editPullRequestContent(
-                            finalTitle,
-                            finalDescription,
-                            ".md"
-                        );
-
-                        finalTitle = editedContent.title;
-                        finalDescription = editedContent.description;
-
-                        console.log("✅ Content updated from editor");
-                    } catch (error) {
-                        console.error("❌ Editor error:", error.message);
-                        console.log("💡 Falling back to manual input");
-                        finalTitle = await new Promise((res) => rl.question("New Title: ", res));
-                        finalDescription = await new Promise((res) =>
-                            rl.question("New Description: ", res)
-                        );
-                    }
-                } else {
-                    finalTitle = await new Promise((res) => rl.question("New Title: ", res));
-                    finalDescription = await new Promise((res) =>
-                        rl.question("New Description: ", res)
-                    );
-                }
-            }
-
-            try {
-                await createOrUpdatePullRequest({
-                    githubRepo,
-                    sourceBranch,
-                    targetBranch,
-                    title: finalTitle,
-                    description: finalDescription,
-                    githubToken,
-                    existingPR,
-                });
-            } catch {
-                // Error handling is already done in createOrUpdatePullRequest
-            }
-            rl.close();
+        // Handle user interaction with menu system
+        await handleUserInteraction(rl, config, sourceBranch, targetBranch, jiraTickets, result, {
+            githubRepo,
+            githubToken,
+            existingPR,
         });
     } catch (error) {
         console.error("❌ Workflow error:", error.message);
