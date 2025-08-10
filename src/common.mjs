@@ -23,7 +23,13 @@ export const getConfig = async () => {
     }
 };
 
-export const generatePrompt = async (openaiToken, sourceBranch, targetBranch, jiraTickets) => {
+export const generatePrompt = async (
+    openaiToken,
+    sourceBranch,
+    targetBranch,
+    jiraTickets,
+    model
+) => {
     const prompt = `Generate a merge/pull request name and extensive description for merging '${sourceBranch}' into '${targetBranch}'. Include JIRA tickets: ${jiraTickets || "none"}.`;
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -32,7 +38,7 @@ export const generatePrompt = async (openaiToken, sourceBranch, targetBranch, ji
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            model: "gpt-3.5-turbo",
+            model: model || "gpt-3.5-turbo",
             messages: [{ role: "user", content: prompt }],
             max_tokens: 512,
         }),
