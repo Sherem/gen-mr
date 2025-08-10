@@ -2,7 +2,8 @@
 // Main functionality to generate merge request names and descriptions using specified AI models
 
 import { generateMergeRequestWithChatGPT } from "./ai/chatgpt.mjs";
-import { generateMergeRequestPrompt, validateGitContext } from "./git-utils.mjs";
+import { generateMergeRequestPrompt } from "./prompt-generator.mjs";
+import { validateGitContext } from "./git-utils.mjs";
 
 /**
  * Generate merge request title and description using the specified AI model
