@@ -6,6 +6,7 @@ import minimist from "minimist";
 import { configureGithubToken, showTokenConfigHelp } from "./config/token-config.mjs";
 import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
 import { showCurrentConfig } from "./config/common.mjs";
+import { validateConfigAndRepository } from "./config/validation.mjs";
 import {
     configureChatGPTToken,
     showAiTokenConfigHelp,
@@ -180,8 +181,19 @@ const main = async () => {
         process.exit(1);
     }
 
+    // Validate configuration and repository
+    let validationResult;
+    try {
+        validationResult = await validateConfigAndRepository();
+    } catch (error) {
+        console.log(`❌ Error: ${error.message}`);
+        process.exit(1);
+    }
+
+    const { config, githubRepo } = validationResult;
+
     // Call function from workflow
-    await executePRWorkflow(sourceBranch, targetBranch, jiraTickets);
+    await executePRWorkflow(sourceBranch, targetBranch, jiraTickets, config, githubRepo);
 };
 
 main();

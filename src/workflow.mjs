@@ -2,13 +2,7 @@
 // PR generation workflow extracted from gen-pr.mjs
 
 import readline from "readline";
-import {
-    getConfig,
-    getEditorCommand,
-    editPullRequestContent,
-    openInEditor,
-} from "./config/common.mjs";
-import { getRepositoryFromRemote } from "./git-utils.mjs";
+import { getEditorCommand, editPullRequestContent, openInEditor } from "./config/common.mjs";
 import {
     generateMergeRequestSafe,
     getDefaultPromptOptions,
@@ -281,79 +275,24 @@ const handleUserInteraction = async (
  * @param {string} sourceBranch - Source branch to merge from
  * @param {string} targetBranch - Target branch to merge into
  * @param {string} jiraTickets - Comma-separated JIRA ticket IDs (optional)
+ * @param {object} config - Configuration object containing tokens
+ * @param {string} githubRepo - GitHub repository name in format "owner/repo"
  * @returns {Promise<void>}
  */
-export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets = "") => {
+export const executePRWorkflow = async (
+    sourceBranch,
+    targetBranch,
+    jiraTickets = "",
+    config,
+    githubRepo
+) => {
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
     });
 
     try {
-        // Get configuration
-        let config;
-        try {
-            config = await getConfig();
-        } catch {
-            console.log("❌ Error: No configuration found.");
-            console.log("💡 Run 'gen-pr --create-token' to set up your GitHub token first.");
-            rl.close();
-            process.exit(1);
-        }
-
-        const { githubToken, openaiToken } = config;
-
-        if (!githubToken) {
-            console.log("❌ Error: GitHub token not found in configuration.");
-            console.log("💡 Run 'gen-pr --create-token' to set up your GitHub token.");
-            rl.close();
-            process.exit(1);
-        }
-
-        if (!openaiToken) {
-            console.log("❌ Error: OpenAI token not found in configuration.");
-            console.log("💡 Please add 'openaiToken' to your .gen-mr/config.json file.");
-            rl.close();
-            process.exit(1);
-        }
-
-        // Detect repository type from git remote
-        let repoInfo;
-        try {
-            repoInfo = await getRepositoryFromRemote();
-        } catch (error) {
-            console.log("❌ Error: Failed to detect repository from git remote.");
-            console.log(`💡 ${error.message}`);
-            console.log(
-                "💡 Make sure you're in a git repository with an origin remote configured."
-            );
-            rl.close();
-            process.exit(1);
-        }
-
-        // Check repository type and provide appropriate suggestions
-        if (repoInfo.type === "gitlab") {
-            console.log("🦊 GitLab repository detected!");
-            console.log("💡 For GitLab repositories, consider using gen-mr instead of gen-pr.");
-            console.log(`   Repository: ${repoInfo.fullName} on ${repoInfo.hostname}`);
-            rl.close();
-            process.exit(1);
-        } else if (repoInfo.type === "unknown") {
-            console.log("❌ Error: Unknown repository type detected.");
-            console.log(`   Repository host: ${repoInfo.hostname}`);
-            console.log("💡 This tool currently supports GitHub repositories only.");
-            console.log("💡 For GitLab repositories, use gen-mr instead.");
-            rl.close();
-            process.exit(1);
-        } else if (repoInfo.type !== "github") {
-            console.log("❌ Error: Unsupported repository type.");
-            console.log(`   Repository host: ${repoInfo.hostname}`);
-            console.log("💡 This tool supports GitHub repositories only.");
-            rl.close();
-            process.exit(1);
-        }
-
-        const githubRepo = repoInfo.fullName;
+        const { githubToken } = config;
 
         const promptOptions = getDefaultPromptOptions({
             includeGitDiff: true,
@@ -377,7 +316,7 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
             console.log(`   URL: ${existingPR.html_url}`);
             console.log(`   Status: ${existingPR.state}`);
             console.log(`   Title: ${existingPR.title}`);
-            console.log(`   Description: ${existingPR.body || ""}`);
+            console.log(`   Description:\n${existingPR.body || ""}`);
             console.log("");
 
             console.log("What would you like to do?");
