@@ -355,6 +355,12 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
 
         const githubRepo = repoInfo.fullName;
 
+        const promptOptions = getDefaultPromptOptions({
+            includeGitDiff: true,
+            includeCommitMessages: true,
+            includeChangedFiles: true,
+        });
+
         // Check if a pull request already exists for these branches
         console.log("🔍 Checking for existing pull requests...");
         const existingPR = await findExistingPullRequest(
@@ -364,7 +370,6 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
             githubToken
         );
 
-        let previousResult = null;
         if (existingPR) {
             console.log("📋 Found existing pull request:");
             console.log(`   Title: ${existingPR.title}`);
@@ -374,7 +379,7 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
 
             console.log("What would you like to do?");
             console.log("1. 🔄 Regenerate PR (fresh generation)");
-            console.log("2. 🔄 Regenerate PR and include title and description of existing PR");
+            console.log("2. 🔄 Regenerate existing PR with additional instructions");
             console.log("3. ❌ Cancel");
 
             const choice = await new Promise((res) => rl.question("Choose an option (1-3): ", res));
@@ -385,12 +390,54 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
                     // previousResult remains null for fresh generation
                     break;
                 case "2":
-                    console.log("🔄 Will regenerate including existing PR content...");
-                    previousResult = {
-                        title: existingPR.title,
-                        description: existingPR.body || "",
-                    };
-                    console.log(`📋 Including existing PR: "${previousResult.title}"`);
+                    console.log("🔄 Will regenerate existing PR with additional instructions...");
+                    // Use regenerateMergeRequest function to handle editor and instructions
+                    try {
+                        // Create a temporary result object with existing PR data
+                        const regeneratedResult = await regenerateMergeRequest(
+                            config,
+                            sourceBranch,
+                            targetBranch,
+                            jiraTickets,
+                            { title: existingPR.title, description: existingPR.body || "" },
+                            {
+                                aiModel: "ChatGPT",
+                                promptOptions: promptOptions || getDefaultPromptOptions(),
+                            }
+                        );
+
+                        // Start with existing PR content and proceed to the menu system
+                        console.log("\n" + "=".repeat(60));
+                        console.log("📝 Existing Pull Request");
+                        console.log("=".repeat(60));
+                        console.log(`\n🏷️  Title: ${regeneratedResult.title}`);
+                        console.log(`\n📄 Description:\n${regeneratedResult.description}`);
+                        console.log("=".repeat(60));
+
+                        // Handle user interaction with menu system - user can choose to regenerate with instructions
+
+                        console.log("\n" + "=".repeat(60));
+
+                        // Handle user interaction with menu system - user can choose to regenerate with instructions
+                        await handleUserInteraction(
+                            rl,
+                            config,
+                            sourceBranch,
+                            targetBranch,
+                            jiraTickets,
+                            regeneratedResult,
+                            {
+                                githubRepo,
+                                githubToken,
+                                existingPR,
+                            }
+                        );
+                        return; // Exit the function since we've handled the full workflow
+                    } catch (error) {
+                        console.error("❌ Failed to regenerate with instructions:", error.message);
+                        console.log("💡 Falling back to fresh generation...");
+                        // Continue with fresh generation as fallback
+                    }
                     break;
                 case "3":
                 default:
@@ -404,17 +451,6 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
         let result;
         try {
             console.log("🔍 Generating AI-powered pull request...");
-
-            const promptOptions = getDefaultPromptOptions({
-                includeGitDiff: true,
-                includeCommitMessages: true,
-                includeChangedFiles: true,
-                previousResult: previousResult,
-            });
-
-            if (previousResult) {
-                console.log("🔄 Regenerating with existing PR context...");
-            }
 
             result = await generateMergeRequestSafe(
                 config,

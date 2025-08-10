@@ -44,7 +44,7 @@ const showUsage = () => {
     console.log("Behavior:");
     console.log("  If an existing PR is found for the given branches, you will be prompted with:");
     console.log("  1. Regenerate PR (fresh generation)");
-    console.log("  2. Regenerate PR and include title and description of existing PR");
+    console.log("  2. Regenerate existing PR with additional instructions");
     console.log("  3. Cancel");
     console.log("");
     console.log("Options:");
