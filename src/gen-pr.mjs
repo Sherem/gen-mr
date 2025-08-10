@@ -3,7 +3,8 @@
 // CLI tool for creating GitHub pull requests with AI-generated name/description
 
 import minimist from "minimist";
-import { configureGithubToken, showTokenConfigHelp } from "./token-config.mjs";
+import { configureGithubToken, showTokenConfigHelp } from "./config/token-config.mjs";
+import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
 import {
     configureChatGPTToken,
     showAiTokenConfigHelp,
@@ -30,6 +31,7 @@ const showUsage = () => {
     console.log("  gen-pr --create-token [--global | -g]");
     console.log("  gen-pr --create-ai-token <LLM> [--global | -g]");
     console.log("  gen-pr --use-model <model> [--global | -g]");
+    console.log("  gen-pr --configure-editor [--global | -g]");
     console.log("  gen-pr --help");
     console.log("");
     console.log("Arguments:");
@@ -44,6 +46,8 @@ const showUsage = () => {
     console.log("                         Use with --global to save globally");
     console.log("  --use-model            Select AI model (ChatGPT models only for now)");
     console.log("                         Use with --global to save globally");
+    console.log("  --configure-editor     Configure editor command for advanced editing");
+    console.log("                         Use with --global to save globally");
     console.log("  --help                 Show this help message");
     console.log("");
     console.log("Examples:");
@@ -54,10 +58,13 @@ const showUsage = () => {
     console.log("  gen-pr --create-ai-token ChatGPT");
     console.log("  gen-pr --create-ai-token ChatGPT --global");
     console.log("  gen-pr --use-model gpt-4o");
+    console.log("  gen-pr --configure-editor");
+    console.log("  gen-pr --configure-editor --global");
     console.log("");
     showTokenConfigHelp();
     showAiTokenConfigHelp();
     showChatGPTModelsHelp();
+    showEditorConfigHelp();
 };
 
 const main = async () => {
@@ -74,6 +81,17 @@ const main = async () => {
             process.exit(0);
         } catch (error) {
             console.error("❌ Token configuration failed:", error.message);
+            process.exit(1);
+        }
+    }
+
+    // Handle editor configuration
+    if (argv["configure-editor"]) {
+        try {
+            await configureEditor(argv.global || argv.g);
+            process.exit(0);
+        } catch (error) {
+            console.error("❌ Editor configuration failed:", error.message);
             process.exit(1);
         }
     }

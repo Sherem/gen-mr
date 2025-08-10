@@ -4,9 +4,10 @@
 
 import minimist from "minimist";
 import readline from "readline";
-import { getConfig } from "./common.mjs";
+import { getConfig, getEditorCommand, openInEditor } from "./config/common.mjs";
 import { configureChatGPTToken, showAiTokenConfigHelp } from "./ai/chatgpt.mjs";
 import { setChatGPTModel, showChatGPTModelsHelp, CHATGPT_MODELS } from "./ai/chatgpt.mjs";
+import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
 import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
 
 const argv = minimist(process.argv.slice(2), {
@@ -39,6 +40,7 @@ const showUsage = () => {
     console.log("  gen-mr <sourceBranch> <targetBranch> [jiraTickets]");
     console.log("  gen-mr --create-ai-token <LLM> [--global | -g]");
     console.log("  gen-mr --use-model <model> [--global | -g]");
+    console.log("  gen-mr --configure-editor [--global | -g]");
     console.log("  gen-mr --help");
     console.log("");
     console.log("Arguments:");
@@ -51,6 +53,8 @@ const showUsage = () => {
     console.log("                         Use with --global to save globally");
     console.log("  --use-model            Select AI model (ChatGPT models only for now)");
     console.log("                         Use with --global to save globally");
+    console.log("  --configure-editor     Configure editor command for advanced editing");
+    console.log("                         Use with --global to save globally");
     console.log("  --help                 Show this help message");
     console.log("");
     console.log("Examples:");
@@ -59,9 +63,12 @@ const showUsage = () => {
     console.log("  gen-mr --create-ai-token ChatGPT");
     console.log("  gen-mr --create-ai-token ChatGPT --global");
     console.log("  gen-mr --use-model gpt-4o");
+    console.log("  gen-mr --configure-editor");
+    console.log("  gen-mr --configure-editor --global");
     console.log("");
     showAiTokenConfigHelp();
     showChatGPTModelsHelp();
+    showEditorConfigHelp();
 };
 
 const main = async () => {
@@ -99,6 +106,17 @@ const main = async () => {
             process.exit(0);
         } catch (error) {
             console.error("❌ AI token configuration failed:", error.message);
+            process.exit(1);
+        }
+    }
+
+    // Handle editor configuration
+    if (argv["configure-editor"]) {
+        try {
+            await configureEditor(argv.global || argv.g);
+            process.exit(0);
+        } catch (error) {
+            console.error("❌ Editor configuration failed:", error.message);
             process.exit(1);
         }
     }
@@ -185,9 +203,59 @@ const main = async () => {
     rl.question("Do you want to edit the title/description? (y/N): ", async (edit) => {
         let finalTitle = result.title;
         let finalDescription = result.description;
+
+        const editorCommand = await getEditorCommand();
+        const hasEditor = editorCommand !== null;
+
         if (edit.toLowerCase() === "y") {
-            finalTitle = await new Promise((res) => rl.question("New Title: ", res));
-            finalDescription = await new Promise((res) => rl.question("New Description: ", res));
+            if (hasEditor) {
+                const useEditor = await new Promise((res) =>
+                    rl.question("Use editor for editing? (y/N): ", res)
+                );
+
+                if (useEditor.toLowerCase() === "y") {
+                    try {
+                        console.log("🚀 Opening editor...");
+                        const editorContent = `${finalTitle}\n\n---\n\n${finalDescription}`;
+                        const editedContent = await openInEditor(editorContent, ".md");
+
+                        // Parse the edited content back into title and description
+                        const lines = editedContent.split("\n");
+                        const separatorIndex = lines.findIndex((line) => line.trim() === "---");
+
+                        if (separatorIndex !== -1) {
+                            finalTitle = lines.slice(0, separatorIndex).join("\n").trim();
+                            finalDescription = lines
+                                .slice(separatorIndex + 1)
+                                .join("\n")
+                                .trim();
+                        } else {
+                            // If no separator found, treat first line as title, rest as description
+                            finalTitle = lines[0] || finalTitle;
+                            finalDescription = lines.slice(1).join("\n").trim() || finalDescription;
+                        }
+
+                        console.log("✅ Content updated from editor");
+                    } catch (error) {
+                        console.error("❌ Editor error:", error.message);
+                        console.log("💡 Falling back to manual input");
+                        finalTitle = await new Promise((res) => rl.question("New Title: ", res));
+                        finalDescription = await new Promise((res) =>
+                            rl.question("New Description: ", res)
+                        );
+                    }
+                } else {
+                    finalTitle = await new Promise((res) => rl.question("New Title: ", res));
+                    finalDescription = await new Promise((res) =>
+                        rl.question("New Description: ", res)
+                    );
+                }
+            } else {
+                finalTitle = await new Promise((res) => rl.question("New Title: ", res));
+                finalDescription = await new Promise((res) =>
+                    rl.question("New Description: ", res)
+                );
+            }
         }
         // Create MR via GitLab API using native fetch
         try {
