@@ -370,6 +370,8 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
             githubToken
         );
 
+        let result;
+
         if (existingPR) {
             console.log("📋 Found existing pull request:");
             console.log(`   Title: ${existingPR.title}`);
@@ -394,7 +396,7 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
                     // Use regenerateMergeRequest function to handle editor and instructions
                     try {
                         // Create a temporary result object with existing PR data
-                        const regeneratedResult = await regenerateMergeRequest(
+                        result = await regenerateMergeRequest(
                             config,
                             sourceBranch,
                             targetBranch,
@@ -410,29 +412,13 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
                         console.log("\n" + "=".repeat(60));
                         console.log("📝 Existing Pull Request");
                         console.log("=".repeat(60));
-                        console.log(`\n🏷️  Title: ${regeneratedResult.title}`);
-                        console.log(`\n📄 Description:\n${regeneratedResult.description}`);
+                        console.log(`\n🏷️  Title: ${result.title}`);
+                        console.log(`\n📄 Description:\n${result.description}`);
                         console.log("=".repeat(60));
 
                         // Handle user interaction with menu system - user can choose to regenerate with instructions
 
                         console.log("\n" + "=".repeat(60));
-
-                        // Handle user interaction with menu system - user can choose to regenerate with instructions
-                        await handleUserInteraction(
-                            rl,
-                            config,
-                            sourceBranch,
-                            targetBranch,
-                            jiraTickets,
-                            regeneratedResult,
-                            {
-                                githubRepo,
-                                githubToken,
-                                existingPR,
-                            }
-                        );
-                        return; // Exit the function since we've handled the full workflow
                     } catch (error) {
                         console.error("❌ Failed to regenerate with instructions:", error.message);
                         console.log("💡 Falling back to fresh generation...");
@@ -445,37 +431,36 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
                     rl.close();
                     process.exit(0);
             }
-        }
+        } else {
+            // Generate merge request using the new modular approach
+            try {
+                console.log("🔍 Generating AI-powered pull request...");
 
-        // Generate merge request using the new modular approach
-        let result;
-        try {
-            console.log("🔍 Generating AI-powered pull request...");
+                result = await generateMergeRequestSafe(
+                    config,
+                    sourceBranch,
+                    targetBranch,
+                    jiraTickets,
+                    {
+                        aiModel: "ChatGPT",
+                        promptOptions,
+                        verbose: true,
+                    }
+                );
 
-            result = await generateMergeRequestSafe(
-                config,
-                sourceBranch,
-                targetBranch,
-                jiraTickets,
-                {
-                    aiModel: "ChatGPT",
-                    promptOptions,
-                    verbose: true,
-                }
-            );
-
-            console.log("\n" + "=".repeat(60));
-            const actionText = existingPR ? "Updated Pull Request" : "Generated Pull Request";
-            console.log(`📝 ${actionText}`);
-            console.log("=".repeat(60));
-            console.log(`\n🏷️  Title: ${result.title}`);
-            console.log(`\n📄 Description:\n${result.description}`);
-            console.log(`\n🤖 Generated using: ${result.aiModel} (${result.model})`);
-            console.log("=".repeat(60));
-        } catch (error) {
-            console.error("❌ Failed to generate pull request:", error.message);
-            rl.close();
-            process.exit(1);
+                console.log("\n" + "=".repeat(60));
+                const actionText = existingPR ? "Updated Pull Request" : "Generated Pull Request";
+                console.log(`📝 ${actionText}`);
+                console.log("=".repeat(60));
+                console.log(`\n🏷️  Title: ${result.title}`);
+                console.log(`\n📄 Description:\n${result.description}`);
+                console.log(`\n🤖 Generated using: ${result.aiModel} (${result.model})`);
+                console.log("=".repeat(60));
+            } catch (error) {
+                console.error("❌ Failed to generate pull request:", error.message);
+                rl.close();
+                process.exit(1);
+            }
         }
 
         // Handle user interaction with menu system
