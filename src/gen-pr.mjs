@@ -6,6 +6,13 @@ import minimist from "minimist";
 import readline from "readline";
 import { getConfig, generatePrompt } from "./common.mjs";
 import { configureGithubToken, showTokenConfigHelp } from "./token-config.mjs";
+import {
+    configureChatGPTToken,
+    showAiTokenConfigHelp,
+    setChatGPTModel,
+    showChatGPTModelsHelp,
+    CHATGPT_MODELS,
+} from "./ai/chatgpt.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -38,6 +45,8 @@ const showUsage = () => {
     console.log("Usage:");
     console.log("  gen-pr <sourceBranch> <targetBranch> [jiraTickets] [options]");
     console.log("  gen-pr --create-token [--global | -g]");
+    console.log("  gen-pr --create-ai-token <LLM> [--global | -g]");
+    console.log("  gen-pr --use-model <model> [--global | -g]");
     console.log("  gen-pr --help");
     console.log("");
     console.log("Arguments:");
@@ -48,6 +57,10 @@ const showUsage = () => {
     console.log("Options:");
     console.log("  --create-token         Configure GitHub Personal Access Token");
     console.log("  --global, -g           Save token globally (use with --create-token)");
+    console.log("  --create-ai-token      Configure AI provider token (e.g., ChatGPT)");
+    console.log("                         Use with --global to save globally");
+    console.log("  --use-model            Select AI model (ChatGPT models only for now)");
+    console.log("                         Use with --global to save globally");
     console.log("  --help                 Show this help message");
     console.log("");
     console.log("Examples:");
@@ -55,8 +68,13 @@ const showUsage = () => {
     console.log("  gen-pr feature/login develop PROJ-123,PROJ-456");
     console.log("  gen-pr --create-token");
     console.log("  gen-pr --create-token --global");
+    console.log("  gen-pr --create-ai-token ChatGPT");
+    console.log("  gen-pr --create-ai-token ChatGPT --global");
+    console.log("  gen-pr --use-model gpt-4o");
     console.log("");
     showTokenConfigHelp();
+    showAiTokenConfigHelp();
+    showChatGPTModelsHelp();
 };
 
 const main = async () => {
@@ -73,6 +91,53 @@ const main = async () => {
             process.exit(0);
         } catch (error) {
             console.error("❌ Token configuration failed:", error.message);
+            process.exit(1);
+        }
+    }
+
+    // Handle AI token configuration
+    if (argv["create-ai-token"]) {
+        const llmRaw = argv["create-ai-token"]; // expects a value like "ChatGPT"
+        const llm = String(llmRaw || "")
+            .trim()
+            .toLowerCase();
+        const isGlobal = argv.global || argv.g;
+
+        // Supported aliases mapping to ChatGPT
+        const chatgptAliases = new Set(["chatgpt", "openai", "gpt", "gpt-3.5", "gpt-4", "gpt-4o"]);
+
+        if (!llm) {
+            console.error("❌ Missing LLM argument. Example: gen-pr --create-ai-token ChatGPT");
+            process.exit(1);
+        }
+
+        try {
+            if (chatgptAliases.has(llm)) {
+                await configureChatGPTToken(isGlobal);
+            } else {
+                console.error(
+                    `❌ Unsupported LLM '${llmRaw}'. Only ChatGPT is implemented at the moment.`
+                );
+                console.log("ℹ️  Try: gen-pr --create-ai-token ChatGPT");
+                process.exit(1);
+            }
+            process.exit(0);
+        } catch (error) {
+            console.error("❌ AI token configuration failed:", error.message);
+            process.exit(1);
+        }
+    }
+
+    // Handle model selection
+    if (argv["use-model"]) {
+        const modelRaw = argv["use-model"]; // expects a value like "gpt-4o"
+        const isGlobal = argv.global || argv.g;
+        try {
+            await setChatGPTModel(String(modelRaw), isGlobal);
+            process.exit(0);
+        } catch (error) {
+            console.error("❌ Failed to set model:", error.message);
+            console.log("ℹ️  Supported models:", CHATGPT_MODELS.join(", "));
             process.exit(1);
         }
     }
@@ -128,7 +193,14 @@ const main = async () => {
         rl.close();
         process.exit(1);
     }
-    const aiResult = await generatePrompt(openaiToken, sourceBranch, targetBranch, jiraTickets);
+    const model = config.openaiModel; // optional
+    const aiResult = await generatePrompt(
+        openaiToken,
+        sourceBranch,
+        targetBranch,
+        jiraTickets,
+        model
+    );
     const [title, ...descArr] = aiResult.split("\n");
     const description = descArr.join("\n");
     console.log("\nGenerated Title:", title);

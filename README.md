@@ -16,17 +16,20 @@ AI-powered CLI tools to generate and create GitLab merge requests and GitHub pul
 ### From Source
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd gen-mr
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Make the scripts executable (if needed):
+
 ```bash
 chmod +x src/gen-mr.mjs src/gen-pr.mjs
 ```
@@ -52,13 +55,13 @@ Create a `.gen-mr/config.json` file with the following structure:
 
 ```json
 {
-  "openaiToken": "your-openai-api-key",
-  "gitlabToken": "your-gitlab-personal-access-token",
-  "gitlabUrl": "https://gitlab.com",
-  "gitlabProjectId": "your-project-id",
-  "githubToken": "your-github-personal-access-token",
-  "githubOwner": "your-github-username-or-org",
-  "githubRepo": "your-repository-name"
+    "openaiToken": "your-openai-api-key",
+    "gitlabToken": "your-gitlab-personal-access-token",
+    "gitlabUrl": "https://gitlab.com",
+    "gitlabProjectId": "your-project-id",
+    "githubToken": "your-github-personal-access-token",
+    "githubOwner": "your-github-username-or-org",
+    "githubRepo": "your-repository-name"
 }
 ```
 
@@ -144,7 +147,7 @@ gen-pr --create-token
 # Run GitLab MR generator
 npm run start:mr
 
-# Run GitHub PR generator  
+# Run GitHub PR generator
 npm run start:pr
 
 # Lint code
@@ -173,17 +176,17 @@ gen-mr/
 ### Common Issues
 
 1. **"No config found in .gen-mr directory"**
-   - Create a `.gen-mr/config.json` file with your API tokens
-   - Ensure the file is in either your current directory or home directory
+    - Create a `.gen-mr/config.json` file with your API tokens
+    - Ensure the file is in either your current directory or home directory
 
 2. **"Failed to create merge request/pull request"**
-   - Verify your GitLab/GitHub tokens have the correct permissions
-   - Check that the project ID (GitLab) or owner/repo (GitHub) are correct
-   - Ensure source and target branches exist
+    - Verify your GitLab/GitHub tokens have the correct permissions
+    - Check that the project ID (GitLab) or owner/repo (GitHub) are correct
+    - Ensure source and target branches exist
 
 3. **OpenAI API errors**
-   - Verify your OpenAI API key is valid and has sufficient credits
-   - Check your OpenAI account usage limits
+    - Verify your OpenAI API key is valid and has sufficient credits
+    - Check your OpenAI account usage limits
 
 ### Debug Tips
 
