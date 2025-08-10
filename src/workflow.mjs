@@ -374,9 +374,10 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
 
         if (existingPR) {
             console.log("📋 Found existing pull request:");
-            console.log(`   Title: ${existingPR.title}`);
             console.log(`   URL: ${existingPR.html_url}`);
             console.log(`   Status: ${existingPR.state}`);
+            console.log(`   Title: ${existingPR.title}`);
+            console.log(`   Description: ${existingPR.body || ""}`);
             console.log("");
 
             console.log("What would you like to do?");
@@ -389,7 +390,17 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
             switch (choice.trim()) {
                 case "1":
                     console.log("🔄 Will regenerate with fresh content...");
-                    // previousResult remains null for fresh generation
+                    result = await generateMergeRequestSafe(
+                        config,
+                        sourceBranch,
+                        targetBranch,
+                        jiraTickets,
+                        {
+                            aiModel: "ChatGPT",
+                            promptOptions,
+                            verbose: true,
+                        }
+                    );
                     break;
                 case "2":
                     console.log("🔄 Will regenerate existing PR with additional instructions...");
@@ -407,18 +418,6 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
                                 promptOptions: promptOptions || getDefaultPromptOptions(),
                             }
                         );
-
-                        // Start with existing PR content and proceed to the menu system
-                        console.log("\n" + "=".repeat(60));
-                        console.log("📝 Existing Pull Request");
-                        console.log("=".repeat(60));
-                        console.log(`\n🏷️  Title: ${result.title}`);
-                        console.log(`\n📄 Description:\n${result.description}`);
-                        console.log("=".repeat(60));
-
-                        // Handle user interaction with menu system - user can choose to regenerate with instructions
-
-                        console.log("\n" + "=".repeat(60));
                     } catch (error) {
                         console.error("❌ Failed to regenerate with instructions:", error.message);
                         console.log("💡 Falling back to fresh generation...");
@@ -433,35 +432,30 @@ export const executePRWorkflow = async (sourceBranch, targetBranch, jiraTickets 
             }
         } else {
             // Generate merge request using the new modular approach
-            try {
-                console.log("🔍 Generating AI-powered pull request...");
 
-                result = await generateMergeRequestSafe(
-                    config,
-                    sourceBranch,
-                    targetBranch,
-                    jiraTickets,
-                    {
-                        aiModel: "ChatGPT",
-                        promptOptions,
-                        verbose: true,
-                    }
-                );
+            console.log("🔍 Generating AI-powered pull request...");
 
-                console.log("\n" + "=".repeat(60));
-                const actionText = existingPR ? "Updated Pull Request" : "Generated Pull Request";
-                console.log(`📝 ${actionText}`);
-                console.log("=".repeat(60));
-                console.log(`\n🏷️  Title: ${result.title}`);
-                console.log(`\n📄 Description:\n${result.description}`);
-                console.log(`\n🤖 Generated using: ${result.aiModel} (${result.model})`);
-                console.log("=".repeat(60));
-            } catch (error) {
-                console.error("❌ Failed to generate pull request:", error.message);
-                rl.close();
-                process.exit(1);
-            }
+            result = await generateMergeRequestSafe(
+                config,
+                sourceBranch,
+                targetBranch,
+                jiraTickets,
+                {
+                    aiModel: "ChatGPT",
+                    promptOptions,
+                    verbose: true,
+                }
+            );
         }
+
+        console.log("\n" + "=".repeat(60));
+        const actionText = existingPR ? "Updated Pull Request" : "Generated Pull Request";
+        console.log(`📝 ${actionText}`);
+        console.log("=".repeat(60));
+        console.log(`\n🏷️  Title: ${result.title}`);
+        console.log(`\n📄 Description:\n${result.description}`);
+        console.log(`\n🤖 Generated using: ${result.aiModel} (${result.model})`);
+        console.log("=".repeat(60));
 
         // Handle user interaction with menu system
         await handleUserInteraction(rl, config, sourceBranch, targetBranch, jiraTickets, result, {
