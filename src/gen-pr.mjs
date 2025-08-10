@@ -41,6 +41,58 @@ const postToGithub = async (url, data, token) => {
     return response.json();
 };
 
+const getFromGithub = async (url, token) => {
+    const response = await fetch(url, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `token ${token}`,
+        },
+    });
+    if (!response.ok) {
+        const err = await response.text();
+        throw new Error(err);
+    }
+    return response.json();
+};
+
+const patchToGithub = async (url, data, token) => {
+    const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `token ${token}`,
+        },
+        body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+        const err = await response.text();
+        throw new Error(err);
+    }
+    return response.json();
+};
+
+/**
+ * Check if a pull request already exists for the given branches
+ * @param {string} githubRepo - Repository in format "owner/repo"
+ * @param {string} sourceBranch - Source branch name
+ * @param {string} targetBranch - Target branch name
+ * @param {string} githubToken - GitHub token
+ * @returns {Promise<object|null>} Existing PR object or null if not found
+ */
+const findExistingPullRequest = async (githubRepo, sourceBranch, targetBranch, githubToken) => {
+    try {
+        const pulls = await getFromGithub(
+            `https://api.github.com/repos/${githubRepo}/pulls?state=open&head=${sourceBranch}&base=${targetBranch}`,
+            githubToken
+        );
+        return pulls.length > 0 ? pulls[0] : null;
+    } catch (error) {
+        console.warn("Warning: Could not check for existing pull requests:", error.message);
+        return null;
+    }
+};
+
 const showUsage = () => {
     console.log("\n📋 gen-pr - GitHub Pull Request Generator");
     console.log("=".repeat(45));
@@ -224,6 +276,37 @@ const main = async () => {
 
     const githubRepo = repoInfo.fullName;
 
+    // Check if a pull request already exists for these branches
+    console.log("🔍 Checking for existing pull requests...");
+    const existingPR = await findExistingPullRequest(
+        githubRepo,
+        sourceBranch,
+        targetBranch,
+        githubToken
+    );
+
+    if (existingPR) {
+        console.log("📋 Found existing pull request:");
+        console.log(`   Title: ${existingPR.title}`);
+        console.log(`   URL: ${existingPR.html_url}`);
+        console.log(`   Status: ${existingPR.state}`);
+
+        const updateChoice = await new Promise((res) =>
+            rl.question(
+                "Do you want to update the existing PR with new AI-generated content? (y/N): ",
+                res
+            )
+        );
+
+        if (updateChoice.toLowerCase() !== "y") {
+            console.log("❌ Operation cancelled. Existing PR will remain unchanged.");
+            rl.close();
+            process.exit(0);
+        }
+
+        console.log("🔄 Will update existing pull request...");
+    }
+
     // Generate merge request using the new modular approach
     let result;
     try {
@@ -242,7 +325,8 @@ const main = async () => {
         });
 
         console.log("\n" + "=".repeat(60));
-        console.log("📝 Generated Pull Request");
+        const actionText = existingPR ? "Updated Pull Request" : "Generated Pull Request";
+        console.log(`📝 ${actionText}`);
         console.log("=".repeat(60));
         console.log(`\n🏷️  Title: ${result.title}`);
         console.log(`\n📄 Description:\n${result.description}`);
@@ -261,21 +345,36 @@ const main = async () => {
             finalTitle = await new Promise((res) => rl.question("New Title: ", res));
             finalDescription = await new Promise((res) => rl.question("New Description: ", res));
         }
-        // Create PR via GitHub API using native fetch
+
         try {
-            const res = await postToGithub(
-                `https://api.github.com/repos/${githubRepo}/pulls`,
-                {
-                    head: sourceBranch,
-                    base: targetBranch,
-                    title: finalTitle,
-                    body: finalDescription,
-                },
-                githubToken
-            );
-            console.log("Pull request created:", res.html_url);
+            if (existingPR) {
+                // Update existing PR
+                const res = await patchToGithub(
+                    `https://api.github.com/repos/${githubRepo}/pulls/${existingPR.number}`,
+                    {
+                        title: finalTitle,
+                        body: finalDescription,
+                    },
+                    githubToken
+                );
+                console.log("✅ Pull request updated:", res.html_url);
+            } else {
+                // Create new PR
+                const res = await postToGithub(
+                    `https://api.github.com/repos/${githubRepo}/pulls`,
+                    {
+                        head: sourceBranch,
+                        base: targetBranch,
+                        title: finalTitle,
+                        body: finalDescription,
+                    },
+                    githubToken
+                );
+                console.log("✅ Pull request created:", res.html_url);
+            }
         } catch (err) {
-            console.error("Failed to create pull request:", err.message);
+            const actionText = existingPR ? "update" : "create";
+            console.error(`❌ Failed to ${actionText} pull request:`, err.message);
         }
         rl.close();
     });

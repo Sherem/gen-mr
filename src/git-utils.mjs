@@ -270,3 +270,19 @@ export const validateGitContext = async (sourceBranch, targetBranch) => {
         throw new Error(`Git validation failed: ${error.message}`);
     }
 };
+
+/**
+ * Check if branches have any differences
+ * @param {string} sourceBranch - Source branch name
+ * @param {string} targetBranch - Target branch name
+ * @returns {Promise<boolean>} True if branches have differences
+ */
+export const branchesHaveDifferences = async (sourceBranch, targetBranch) => {
+    try {
+        const { stdout } = await execAsync(`git rev-list --count ${targetBranch}..${sourceBranch}`);
+        const commitCount = parseInt(stdout.trim(), 10);
+        return commitCount > 0;
+    } catch (error) {
+        throw new Error(`Failed to check branch differences: ${error.message}`);
+    }
+};
