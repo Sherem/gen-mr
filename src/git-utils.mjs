@@ -190,7 +190,7 @@ export const generateMergeRequestPrompt = async (
         includeGitDiff = true,
         includeCommitMessages = true,
         includeChangedFiles = true,
-        maxDiffLines = 100,
+        maxDiffLines = 1000,
     } = options;
 
     let prompt = `Generate a professional merge request title and description for merging '${sourceBranch}' into '${targetBranch}'.`;
@@ -235,14 +235,17 @@ export const generateMergeRequestPrompt = async (
     }
 
     prompt += `\n\nPlease provide:
-1. A concise, descriptive title for the merge request
+1. A concise, descriptive title for the merge request. In title do not use markdown
 2. A detailed description that includes:
    - Summary of changes
    - Purpose/motivation for the changes
    - Any breaking changes or important notes
+   - List of affected files
    - Testing considerations (if applicable)
 
-Format the response with the title on the first line, followed by the description on subsequent lines.`;
+Format the response with the title on the first line, followed by the description on subsequent lines.
+
+`;
 
     return prompt;
 };
