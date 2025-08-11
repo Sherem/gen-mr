@@ -230,19 +230,33 @@ const main = async () => {
 
     const { config, githubRepo } = validationResult;
 
-    // Ensure local source branch is fully synced to its upstream and get the remote-tracked name
+    // Ensure local branches are fully synced to their upstream and get the remote-tracked names
     let remoteSourceBranch;
+    let sourceSha;
+    let remoteTargetBranch;
+    let targetSha;
     let upstreamRemoteName;
     try {
-        const { githubSourceBranch, upstreamRemote } = await validateBranchSyncAndGetRemote(
-            sourceBranch,
-            remoteName
-        );
-        remoteSourceBranch = githubSourceBranch;
-        // Prefer the actual upstream remote, but keep the selected one for display where relevant
-        upstreamRemoteName = upstreamRemote;
+        ({
+            githubRemoteBranch: remoteSourceBranch,
+            upstreamRemote: upstreamRemoteName,
+            commitSha: sourceSha,
+        } = await validateBranchSyncAndGetRemote(sourceBranch, remoteName));
     } catch (error) {
         console.log(`❌ Error: ${error.message}`);
+        process.exit(1);
+    }
+
+    try {
+        ({ githubRemoteBranch: remoteTargetBranch, commitSha: targetSha } =
+            await validateBranchSyncAndGetRemote(targetBranch, remoteName));
+    } catch (error) {
+        console.log(`❌ Error: ${error.message}`);
+        process.exit(1);
+    }
+
+    if (sourceSha === targetSha) {
+        console.log(`❌ Error: Source and target branches at the same commit`);
         process.exit(1);
     }
 
@@ -254,6 +268,7 @@ const main = async () => {
         config,
         githubRepo,
         remoteSourceBranch,
+        remoteTargetBranch,
         upstreamRemoteName || remoteName
     );
 };

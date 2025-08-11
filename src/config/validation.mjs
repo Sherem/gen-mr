@@ -7,6 +7,7 @@ import {
     getUpstreamRef,
     fetchRemote,
     getAheadBehind,
+    getCommitSha,
 } from "../git-utils.mjs";
 
 /**
@@ -74,8 +75,8 @@ export const validateConfigAndRepository = async (remoteName) => {
 };
 
 /**
- * Validate that the local source branch is in sync with its tracked remote branch
- * and return the remote branch name to use for GitHub operations.
+ * Validate that a local branch is in sync with its tracked remote branch
+ * and return the remote-tracked branch name to use for GitHub operations.
  *
  * Rules:
  * - If there's no upstream (tracked) branch configured, throw with guidance to push with -u
@@ -87,20 +88,21 @@ export const validateConfigAndRepository = async (remoteName) => {
  * Uses the provided local branch name for git operations, and returns the tracked
  * remote branch name for GitHub operations to handle differing names.
  *
- * @param {string} localSourceBranch
- * @returns {Promise<{ githubSourceBranch: string, upstreamRef: string, upstreamRemote: string }>}
+ * @param {string} localBranch
+ * @param {string} defaultRemoteName
+ * @returns {Promise<{ githubRemoteBranch: string, upstreamRef: string, upstreamRemote: string, commitSha: string }>}
  * @throws {Error} if branch has no upstream, has unpushed commits, or is out of sync
  */
-export const validateBranchSyncAndGetRemote = async (localSourceBranch, defaultRemoteName) => {
-    if (!localSourceBranch) {
-        throw new Error("Local source branch name is required");
+export const validateBranchSyncAndGetRemote = async (localBranch, defaultRemoteName) => {
+    if (!localBranch) {
+        throw new Error("Local branch name is required");
     }
 
     // Determine upstream tracking ref (e.g., origin/feature-xyz or origin/different-name)
-    const upstreamRef = await getUpstreamRef(localSourceBranch);
+    const upstreamRef = await getUpstreamRef(localBranch);
     if (!upstreamRef) {
         throw new Error(
-            `Branch '${localSourceBranch}' has no upstream tracking branch. Push it first with: git push -u ${defaultRemoteName} ${localSourceBranch}`
+            `Branch '${localBranch}' has no upstream tracking branch. Push it first with: git push -u ${defaultRemoteName} ${localBranch}`
         );
     }
     const upstreamRemote = upstreamRef.split("/")[0];
@@ -110,25 +112,28 @@ export const validateBranchSyncAndGetRemote = async (localSourceBranch, defaultR
     await fetchRemote(upstreamRemote);
 
     // Compare commit counts between upstream and local
-    const { behind, ahead } = await getAheadBehind(upstreamRef, localSourceBranch);
+    const { behind, ahead } = await getAheadBehind(upstreamRef, localBranch);
     if (ahead > 0 && behind > 0) {
         throw new Error(
-            `Local branch '${localSourceBranch}' and remote '${upstreamRef}' have diverged (local ahead by ${ahead}, behind by ${behind}). Sync your branch (e.g., git pull --rebase && git push).`
+            `Local branch '${localBranch}' and remote '${upstreamRef}' have diverged (local ahead by ${ahead}, behind by ${behind}). Sync your branch (e.g., git pull --rebase && git push).`
         );
     }
     if (ahead > 0) {
         throw new Error(
-            `Local branch '${localSourceBranch}' is ahead of '${upstreamRef}' by ${ahead} commit(s). Push your commits first (git push).`
+            `Local branch '${localBranch}' is ahead of '${upstreamRef}' by ${ahead} commit(s). Push your commits first (git push).`
         );
     }
     if (behind > 0) {
         throw new Error(
-            `Local branch '${localSourceBranch}' is behind '${upstreamRef}' by ${behind} commit(s). Update your branch first (e.g., git pull --rebase).`
+            `Local branch '${localBranch}' is behind '${upstreamRef}' by ${behind} commit(s). Update your branch first (e.g., git pull --rebase).`
         );
     }
 
     // Use the tracked branch name on GitHub operations
-    const githubSourceBranch = upstreamBranchName;
+    const githubRemoteBranch = upstreamBranchName;
 
-    return { githubSourceBranch, upstreamRef, upstreamRemote };
+    // Resolve the current commit SHA for the provided local branch
+    const commitSha = await getCommitSha(localBranch);
+
+    return { githubRemoteBranch, upstreamRef, upstreamRemote, commitSha };
 };

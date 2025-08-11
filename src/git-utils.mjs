@@ -283,3 +283,17 @@ export const getAheadBehind = async (upstreamRef, localBranch) => {
         throw new Error(`Failed to compare with upstream: ${error.message}`);
     }
 };
+
+/**
+ * Get the commit SHA for a given ref/branch
+ * @param {string} ref - branch name or any git ref (e.g., HEAD, feature-x)
+ * @returns {Promise<string>} Full commit SHA
+ */
+export const getCommitSha = async (ref) => {
+    try {
+        const { stdout } = await execAsync(`git rev-parse ${ref}`);
+        return stdout.trim();
+    } catch (error) {
+        throw new Error(`Failed to get commit SHA for '${ref}': ${error.message}`);
+    }
+};
