@@ -219,7 +219,7 @@ const handleUserInteraction = async (
                 githubRepo: prConfig.githubRepo,
                 // Use tracked remote branch for GitHub API operations
                 sourceBranch: prConfig.remoteSourceBranch || sourceBranch,
-                targetBranch,
+                targetBranch: prConfig.remoteTargetBranch || targetBranch,
                 title: currentResult.title,
                 description: currentResult.description,
                 githubToken: prConfig.githubToken,
@@ -288,6 +288,7 @@ export const executePRWorkflow = async (
     config,
     githubRepo,
     remoteSourceBranch,
+    remoteTargetBranch,
     remoteName
 ) => {
     const rl = readline.createInterface({
@@ -309,7 +310,7 @@ export const executePRWorkflow = async (
         const existingPR = await findExistingPullRequest(
             githubRepo,
             remoteSourceBranch || sourceBranch,
-            targetBranch,
+            remoteTargetBranch || targetBranch,
             githubToken
         );
 
@@ -321,7 +322,11 @@ export const executePRWorkflow = async (
                 remoteName,
                 remoteSourceBranch
             );
-            const displayTarget = formatSourceBranchDisplay(targetBranch, remoteName, targetBranch);
+            const displayTarget = formatSourceBranchDisplay(
+                targetBranch,
+                remoteName,
+                remoteTargetBranch || targetBranch
+            );
             console.log("📋 Found existing pull request:");
             console.log(`🔍 Source → target: ${displaySource} → ${displayTarget}`);
             console.log(`   URL: ${existingPR.html_url}`);
@@ -350,6 +355,7 @@ export const executePRWorkflow = async (
                             promptOptions,
                             verbose: true,
                             remoteSourceBranch,
+                            remoteTargetBranch,
                             remoteName,
                         }
                     );
@@ -397,6 +403,7 @@ export const executePRWorkflow = async (
                     promptOptions,
                     verbose: true,
                     remoteSourceBranch,
+                    remoteTargetBranch,
                     remoteName,
                 }
             );
@@ -417,6 +424,7 @@ export const executePRWorkflow = async (
             githubToken,
             existingPR,
             remoteSourceBranch,
+            remoteTargetBranch,
         });
     } catch (error) {
         console.error("❌ Workflow error:", error.message);

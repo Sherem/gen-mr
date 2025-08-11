@@ -262,6 +262,22 @@ describe("git-utils", () => {
         });
     });
 
+    describe("getCommitSha", () => {
+        test("returns commit sha for ref", async () => {
+            execMock.mockImplementation(callWith("abcdef1234567890\n"));
+            const sha = await gitUtils.getCommitSha("HEAD");
+            expect(sha).toBe("abcdef1234567890");
+            expect(execMock).toHaveBeenCalledWith("git rev-parse HEAD", expect.any(Function));
+        });
+
+        test("throws on exec error", async () => {
+            execMock.mockImplementation(callError("rev-parse failed"));
+            await expect(gitUtils.getCommitSha("main")).rejects.toThrow(
+                "Failed to get commit SHA for 'main': rev-parse failed"
+            );
+        });
+    });
+
     describe("getRepositoryFromRemote", () => {
         test("detects from specific remote (origin)", async () => {
             execMock.mockImplementation(callWith("git@github.com:owner/repo.git\n"));
