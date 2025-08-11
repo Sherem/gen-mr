@@ -225,9 +225,12 @@ const main = async () => {
 
     // Ensure local source branch is fully synced to its upstream and get the remote-tracked name
     let remoteSourceBranch;
+    let remoteName;
     try {
-        const { githubSourceBranch } = await validateBranchSyncAndGetRemote(sourceBranch);
+        const { githubSourceBranch, upstreamRemote } =
+            await validateBranchSyncAndGetRemote(sourceBranch);
         remoteSourceBranch = githubSourceBranch;
+        remoteName = upstreamRemote;
     } catch (error) {
         console.log(`❌ Error: ${error.message}`);
         process.exit(1);
@@ -240,7 +243,8 @@ const main = async () => {
         jiraTickets,
         config,
         githubRepo,
-        remoteSourceBranch
+        remoteSourceBranch,
+        remoteName
     );
 };
 

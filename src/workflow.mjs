@@ -9,6 +9,7 @@ import {
     generateMergeRequest,
 } from "./merge-request-generator.mjs";
 import { findExistingPullRequest, createOrUpdatePullRequest } from "./github-utils.mjs";
+import { formatSourceBranchDisplay } from "./utils/branch-format.mjs";
 
 /**
  * Regenerate merge request with additional user instructions
@@ -216,7 +217,8 @@ const handleUserInteraction = async (
         try {
             await createOrUpdatePullRequest({
                 githubRepo: prConfig.githubRepo,
-                sourceBranch,
+                // Use tracked remote branch for GitHub API operations
+                sourceBranch: prConfig.remoteSourceBranch || sourceBranch,
                 targetBranch,
                 title: currentResult.title,
                 description: currentResult.description,
@@ -285,7 +287,8 @@ export const executePRWorkflow = async (
     jiraTickets = "",
     config,
     githubRepo,
-    remoteSourceBranch
+    remoteSourceBranch,
+    remoteName
 ) => {
     const rl = readline.createInterface({
         input: process.stdin,
@@ -339,6 +342,11 @@ export const executePRWorkflow = async (
                             aiModel: "ChatGPT",
                             promptOptions,
                             verbose: true,
+                            displaySourceBranch: formatSourceBranchDisplay(
+                                sourceBranch,
+                                remoteName,
+                                remoteSourceBranch
+                            ),
                         }
                     );
                     break;
@@ -384,6 +392,11 @@ export const executePRWorkflow = async (
                     aiModel: "ChatGPT",
                     promptOptions,
                     verbose: true,
+                    displaySourceBranch: formatSourceBranchDisplay(
+                        sourceBranch,
+                        remoteName,
+                        remoteSourceBranch
+                    ),
                 }
             );
         }
@@ -402,6 +415,7 @@ export const executePRWorkflow = async (
             githubRepo,
             githubToken,
             existingPR,
+            remoteSourceBranch,
         });
     } catch (error) {
         console.error("❌ Workflow error:", error.message);
