@@ -5,6 +5,8 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 
+import { execSync } from "child_process";
+
 export const getConfig = async () => {
     const localPath = path.resolve(process.cwd(), ".gen-mr/config.json");
     const homePath = path.resolve(os.homedir(), ".gen-mr/config.json");
@@ -48,39 +50,27 @@ const executeEditor = async (editorCommand, content, line = 1, fileExtension = "
     const tempFileName = `gen-mr-edit-${Date.now()}${fileExtension}`;
     const tempFilePath = path.join(tempDir, tempFileName);
 
+    const fileRegex = /\{file\}/g;
+    const lineRegex = /\{line\}/g;
+
     try {
         // Write content to temporary file
         await fs.writeFile(tempFilePath, content, "utf8");
 
         // Execute editor command
-        const { spawn } = await import("child_process");
+        const hasFileTemplate = fileRegex.test(editorCommand);
         const command = editorCommand
-            .replace(/\{line\}/g, `"${line}"`)
-            .replace(/\{file\}/g, tempFilePath);
+            .replace(lineRegex, `${line}`)
+            .replace(fileRegex, tempFilePath);
         const commandParts = command.split(/\s+/);
-        const executable = commandParts[0];
-        const args = commandParts.slice(1).concat([tempFilePath]);
+        // const executable = commandParts[0];
+        // const args = commandParts.slice(1);
+        if (!hasFileTemplate) {
+            commandParts.push(tempFilePath);
+        }
 
-        await new Promise((resolve, reject) => {
-            const child = spawn(executable, args, {
-                stdio: "inherit",
-                shell: true,
-            });
+        execSync(commandParts.join(" "), { stdio: "inherit", shell: true });
 
-            child.on("close", (code) => {
-                if (code === 0) {
-                    resolve();
-                } else {
-                    reject(new Error(`Editor exited with code ${code}`));
-                }
-            });
-
-            child.on("error", (error) => {
-                reject(new Error(`Failed to start editor: ${error.message}`));
-            });
-        });
-
-        // Read the edited content
         const editedContent = await fs.readFile(tempFilePath, "utf8");
         return editedContent;
     } finally {

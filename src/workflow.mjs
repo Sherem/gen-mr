@@ -51,7 +51,7 @@ const regenerateMergeRequest = async (
     const numLines = (templateContent.match(/\n/g) || []).length;
     try {
         // Open editor with template
-        const userInput = await openInEditor(templateContent, numLines, ".txt");
+        const userInput = await openInEditor(templateContent, numLines + 1, ".txt");
 
         // Filter out comments (lines starting with #) and get user instructions
         const instructions = userInput

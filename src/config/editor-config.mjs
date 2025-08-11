@@ -16,13 +16,15 @@ export const configureEditor = async (isGlobal = false) => {
     console.log("=".repeat(40));
     console.log("Configure the command to open your preferred editor for editing PR/MR content.");
     console.log("\n💡 Examples:");
-    console.log("  code         - Opens VS Code");
-    console.log("  vim          - Opens Vim");
-    console.log("  nano         - Opens Nano");
-    console.log("  subl         - Opens Sublime Text");
-    console.log("  atom         - Opens Atom");
-    console.log("  code -w      - Opens VS Code and waits for file to be closed");
-    console.log("  vim +{line}  - Opens Vim and positions cursor at line");
+    console.log("  code -w                    - Opens VS Code and waits for file to be closed");
+    console.log(
+        "  code -w -g {file}:{line}   - Opens VS Code, sets to specific line and waits for file to be closed"
+    );
+    console.log("  vim                        - Opens Vim");
+    console.log("  vim +{line}                - Opens Vim and positions cursor at line");
+    console.log("  nano                       - Opens Nano");
+    console.log("  subl                       - Opens Sublime Text");
+    console.log("  atom                       - Opens Atom");
     console.log("\n🔧 The command will be used to open a temporary file for editing.");
     console.log("⚠️  Make sure the command is available in your PATH.\n");
 
