@@ -316,7 +316,14 @@ export const executePRWorkflow = async (
         let result;
 
         if (existingPR) {
+            const displaySource = formatSourceBranchDisplay(
+                remoteSourceBranch || sourceBranch,
+                remoteName,
+                remoteSourceBranch
+            );
+            const displayTarget = formatSourceBranchDisplay(targetBranch, remoteName, targetBranch);
             console.log("📋 Found existing pull request:");
+            console.log(`🔍 Source → target: ${displaySource} → ${displayTarget}`);
             console.log(`   URL: ${existingPR.html_url}`);
             console.log(`   Status: ${existingPR.state}`);
             console.log(`   Title: ${existingPR.title}`);
@@ -342,11 +349,8 @@ export const executePRWorkflow = async (
                             aiModel: "ChatGPT",
                             promptOptions,
                             verbose: true,
-                            displaySourceBranch: formatSourceBranchDisplay(
-                                sourceBranch,
-                                remoteName,
-                                remoteSourceBranch
-                            ),
+                            remoteSourceBranch,
+                            remoteName,
                         }
                     );
                     break;
@@ -392,11 +396,8 @@ export const executePRWorkflow = async (
                     aiModel: "ChatGPT",
                     promptOptions,
                     verbose: true,
-                    displaySourceBranch: formatSourceBranchDisplay(
-                        sourceBranch,
-                        remoteName,
-                        remoteSourceBranch
-                    ),
+                    remoteSourceBranch,
+                    remoteName,
                 }
             );
         }

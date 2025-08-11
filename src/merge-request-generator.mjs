@@ -87,15 +87,18 @@ export const generateMergeRequestSafe = async (
     jiraTickets = "",
     options = {}
 ) => {
-    const { verbose = false } = options;
+    const { verbose = false, remoteName, remoteSourceBranch } = options;
 
     try {
         if (verbose) {
             // Prefer a preformatted display name when provided (includes remote tracking info)
-            const displaySource = options.displaySourceBranch
-                ? options.displaySourceBranch
-                : formatSourceBranchDisplay(sourceBranch);
-            console.log(`🔍 Generating merge request for ${displaySource} → ${targetBranch}`);
+            const displaySource = formatSourceBranchDisplay(
+                sourceBranch,
+                remoteName,
+                remoteSourceBranch
+            );
+            const displayTarget = formatSourceBranchDisplay(targetBranch, remoteName, targetBranch);
+            console.log(`🔍 Generating merge request for ${displaySource} → ${displayTarget}`);
             if (jiraTickets) {
                 console.log(`🎫 Including JIRA tickets: ${jiraTickets}`);
             }

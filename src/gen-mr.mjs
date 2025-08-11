@@ -65,6 +65,9 @@ const showUsage = () => {
     console.log("                         Use with --global to save globally");
     console.log("  --show-config          Display current configuration");
     console.log("                         Use with --global to show only global config");
+    console.log(
+        "  --remote <name>        Use a specific git remote instead of 'origin' (optional)"
+    );
     console.log("  --help                 Show this help message");
     console.log("");
     console.log("Examples:");
