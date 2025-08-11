@@ -5,6 +5,8 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 
+import { execSync } from "child_process";
+
 export const getConfig = async () => {
     const localPath = path.resolve(process.cwd(), ".gen-mr/config.json");
     const homePath = path.resolve(os.homedir(), ".gen-mr/config.json");
@@ -43,42 +45,32 @@ export const getEditorCommand = async () => {
  * @param {string} fileExtension - File extension for syntax highlighting (default: '.md')
  * @returns {Promise<string>} The edited content
  */
-const executeEditor = async (editorCommand, content, fileExtension = ".md") => {
+const executeEditor = async (editorCommand, content, line = 1, fileExtension = ".md") => {
     const tempDir = os.tmpdir();
     const tempFileName = `gen-mr-edit-${Date.now()}${fileExtension}`;
     const tempFilePath = path.join(tempDir, tempFileName);
+
+    const fileRegex = /\{file\}/g;
+    const lineRegex = /\{line\}/g;
 
     try {
         // Write content to temporary file
         await fs.writeFile(tempFilePath, content, "utf8");
 
         // Execute editor command
-        const { spawn } = await import("child_process");
-        const command = editorCommand.replace(/\{line\}/g, "1").replace(/\{file\}/g, tempFilePath);
+        const hasFileTemplate = fileRegex.test(editorCommand);
+        const command = editorCommand
+            .replace(lineRegex, `${line}`)
+            .replace(fileRegex, tempFilePath);
         const commandParts = command.split(/\s+/);
-        const executable = commandParts[0];
-        const args = commandParts.slice(1).concat([tempFilePath]);
+        // const executable = commandParts[0];
+        // const args = commandParts.slice(1);
+        if (!hasFileTemplate) {
+            commandParts.push(tempFilePath);
+        }
 
-        await new Promise((resolve, reject) => {
-            const child = spawn(executable, args, {
-                stdio: "inherit",
-                shell: true,
-            });
+        execSync(commandParts.join(" "), { stdio: "inherit", shell: true });
 
-            child.on("close", (code) => {
-                if (code === 0) {
-                    resolve();
-                } else {
-                    reject(new Error(`Editor exited with code ${code}`));
-                }
-            });
-
-            child.on("error", (error) => {
-                reject(new Error(`Failed to start editor: ${error.message}`));
-            });
-        });
-
-        // Read the edited content
         const editedContent = await fs.readFile(tempFilePath, "utf8");
         return editedContent;
     } finally {
@@ -97,7 +89,7 @@ const executeEditor = async (editorCommand, content, fileExtension = ".md") => {
  * @param {string} fileExtension - File extension for syntax highlighting (e.g., '.md', '.txt')
  * @returns {Promise<string>} The edited content
  */
-export const openInEditor = async (content, fileExtension = ".md") => {
+export const openInEditor = async (content, line = 1, fileExtension = ".md") => {
     const editorCommand = await getEditorCommand();
 
     if (!editorCommand) {
@@ -106,7 +98,7 @@ export const openInEditor = async (content, fileExtension = ".md") => {
         );
     }
 
-    return await executeEditor(editorCommand, content, fileExtension);
+    return await executeEditor(editorCommand, content, line, fileExtension);
 };
 
 /**
@@ -117,12 +109,12 @@ export const openInEditor = async (content, fileExtension = ".md") => {
  * @param {string} fileExtension - File extension for syntax highlighting (default: '.md')
  * @returns {Promise<{title: string, description: string}>} The edited title and description
  */
-export const editPullRequestContent = async (title, description, fileExtension = ".md") => {
+export const editPullRequestContent = async (title, description, line, fileExtension = ".md") => {
     // Create content with title on first line, separator, then description
     const content = `${title}\n\n---\n\n${description}`;
 
     // Execute editor and get edited content
-    const editedContent = await openInEditor(content, fileExtension);
+    const editedContent = await openInEditor(content, line, fileExtension);
 
     // Parse the edited content back into title and description
     const lines = editedContent.split("\n");
