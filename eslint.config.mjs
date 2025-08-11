@@ -8,7 +8,7 @@ export default [
         files: ["**/*.js", "**/*.mjs"],
         ignores: ["node_modules/**", "dist/**", "build/**"],
         languageOptions: {
-            ecmaVersion: 2021,
+            ecmaVersion: 2022,
             sourceType: "module",
             globals: {
                 console: "readonly",
