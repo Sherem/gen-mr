@@ -64,6 +64,9 @@ const showUsage = () => {
     console.log("                         Use with --global to save globally");
     console.log("  --show-config          Display current configuration");
     console.log("                         Use with --global to show only global config");
+    console.log(
+        "  --remote <name>        Use a specific git remote instead of 'origin' (optional)"
+    );
     console.log("  --help                 Show this help message");
     console.log("");
     console.log("Examples:");
@@ -212,10 +215,14 @@ const main = async () => {
         process.exit(1);
     }
 
+    // Determine remote name (default to origin if not provided)
+    const remoteNameArg = String(argv.remote || "").trim();
+    const remoteName = remoteNameArg || "origin";
+
     // Validate configuration and repository
     let validationResult;
     try {
-        validationResult = await validateConfigAndRepository();
+        validationResult = await validateConfigAndRepository(remoteName);
     } catch (error) {
         console.log(`❌ Error: ${error.message}`);
         process.exit(1);
@@ -225,12 +232,15 @@ const main = async () => {
 
     // Ensure local source branch is fully synced to its upstream and get the remote-tracked name
     let remoteSourceBranch;
-    let remoteName;
+    let upstreamRemoteName;
     try {
-        const { githubSourceBranch, upstreamRemote } =
-            await validateBranchSyncAndGetRemote(sourceBranch);
+        const { githubSourceBranch, upstreamRemote } = await validateBranchSyncAndGetRemote(
+            sourceBranch,
+            remoteName
+        );
         remoteSourceBranch = githubSourceBranch;
-        remoteName = upstreamRemote;
+        // Prefer the actual upstream remote, but keep the selected one for display where relevant
+        upstreamRemoteName = upstreamRemote;
     } catch (error) {
         console.log(`❌ Error: ${error.message}`);
         process.exit(1);
@@ -244,7 +254,7 @@ const main = async () => {
         config,
         githubRepo,
         remoteSourceBranch,
-        remoteName
+        upstreamRemoteName || remoteName
     );
 };
 

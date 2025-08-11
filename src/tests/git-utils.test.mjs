@@ -23,17 +23,17 @@ beforeEach(() => {
 
 const callWith =
     (stdout = "", stderr = "") =>
-        (cmd, optionsOrCb, maybeCb) => {
-            const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
-            cb(null, stdout, stderr);
-        };
+    (cmd, optionsOrCb, maybeCb) => {
+        const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
+        cb(null, stdout, stderr);
+    };
 
 const callError =
     (message = "boom") =>
-        (cmd, optionsOrCb, maybeCb) => {
-            const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
-            cb(new Error(message));
-        };
+    (cmd, optionsOrCb, maybeCb) => {
+        const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
+        cb(new Error(message));
+    };
 
 describe("git-utils", () => {
     describe("getUpstreamRef", () => {
@@ -263,9 +263,9 @@ describe("git-utils", () => {
     });
 
     describe("getRepositoryFromRemote", () => {
-        test("detects from origin", async () => {
+        test("detects from specific remote (origin)", async () => {
             execMock.mockImplementation(callWith("git@github.com:owner/repo.git\n"));
-            const repo = await gitUtils.getRepositoryFromRemote();
+            const repo = await gitUtils.getRepositoryFromRemote("origin");
             expect(repo).toEqual({
                 type: "github",
                 hostname: "github.com",
@@ -276,10 +276,23 @@ describe("git-utils", () => {
             });
         });
 
+        test("detects from non-origin remote (upstream)", async () => {
+            execMock.mockImplementation(callWith("https://gitlab.com/group/proj.git\n"));
+            const repo = await gitUtils.getRepositoryFromRemote("upstream");
+            expect(repo).toEqual({
+                type: "gitlab",
+                hostname: "gitlab.com",
+                fullName: "group/proj",
+                owner: "group",
+                name: "proj",
+                remoteUrl: "https://gitlab.com/group/proj.git",
+            });
+        });
+
         test("handles error", async () => {
             execMock.mockImplementation(callError("bad remote"));
-            await expect(gitUtils.getRepositoryFromRemote()).rejects.toThrow(
-                "Failed to detect repository from remote: Failed to get origin remote: bad remote"
+            await expect(gitUtils.getRepositoryFromRemote("origin")).rejects.toThrow(
+                "Failed to detect repository from remote: Failed to get remote 'origin' url: bad remote"
             );
         });
     });

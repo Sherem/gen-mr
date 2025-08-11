@@ -14,7 +14,7 @@ import {
  * @returns {Promise<object>} Configuration and repository information
  * @throws {Error} If configuration or repository validation fails
  */
-export const validateConfigAndRepository = async () => {
+export const validateConfigAndRepository = async (remoteName) => {
     // Get configuration
     let config;
     try {
@@ -42,10 +42,10 @@ export const validateConfigAndRepository = async () => {
     // Detect repository type from git remote
     let repoInfo;
     try {
-        repoInfo = await getRepositoryFromRemote();
+        repoInfo = await getRepositoryFromRemote(remoteName);
     } catch (error) {
         throw new Error(
-            `Failed to detect repository from git remote: ${error.message}. Make sure you're in a git repository with an origin remote configured.`
+            `Failed to detect repository from git remote: ${error.message}. Make sure you're in a git repository with a '${remoteName}' remote configured.`
         );
     }
 
@@ -91,7 +91,7 @@ export const validateConfigAndRepository = async () => {
  * @returns {Promise<{ githubSourceBranch: string, upstreamRef: string, upstreamRemote: string }>}
  * @throws {Error} if branch has no upstream, has unpushed commits, or is out of sync
  */
-export const validateBranchSyncAndGetRemote = async (localSourceBranch) => {
+export const validateBranchSyncAndGetRemote = async (localSourceBranch, defaultRemoteName) => {
     if (!localSourceBranch) {
         throw new Error("Local source branch name is required");
     }
@@ -100,7 +100,7 @@ export const validateBranchSyncAndGetRemote = async (localSourceBranch) => {
     const upstreamRef = await getUpstreamRef(localSourceBranch);
     if (!upstreamRef) {
         throw new Error(
-            `Branch '${localSourceBranch}' has no upstream tracking branch. Push it first with: git push -u origin ${localSourceBranch}`
+            `Branch '${localSourceBranch}' has no upstream tracking branch. Push it first with: git push -u ${defaultRemoteName} ${localSourceBranch}`
         );
     }
     const upstreamRemote = upstreamRef.split("/")[0];

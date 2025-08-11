@@ -106,6 +106,20 @@ export const getOriginRemote = async () => {
 };
 
 /**
+ * Get a named remote URL
+ * @param {string} remoteName - Remote name (e.g., origin, upstream)
+ * @returns {Promise<string>} Remote URL
+ */
+export const getRemoteUrl = async (remoteName) => {
+    try {
+        const { stdout } = await execAsync(`git config --get remote.${remoteName}.url`);
+        return stdout.trim();
+    } catch (error) {
+        throw new Error(`Failed to get remote '${remoteName}' url: ${error.message}`);
+    }
+};
+
+/**
  * Parse repository information from git remote URL
  * @param {string} remoteUrl - Git remote URL
  * @returns {object} Parsed repository information
@@ -163,12 +177,13 @@ export const detectRepoType = (hostname) => {
 };
 
 /**
- * Get repository information from git origin remote
+ * Get repository information from a named git remote
+ * @param {string} remoteName
  * @returns {Promise<object>} Repository type and details
  */
-export const getRepositoryFromRemote = async () => {
+export const getRepositoryFromRemote = async (remoteName) => {
     try {
-        const remoteUrl = await getOriginRemote();
+        const remoteUrl = await getRemoteUrl(remoteName);
         const repoInfo = parseRepoFromRemote(remoteUrl);
         const repoType = detectRepoType(repoInfo.hostname);
 
