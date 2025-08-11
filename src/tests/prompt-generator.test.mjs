@@ -101,6 +101,45 @@ describe("prompt-generator", () => {
             expect(result).toContain("Please emphasize security improvements");
         });
 
+        test("should not include commit messages when disabled", async () => {
+            getCommitMessages.mockResolvedValue(["This should not appear"]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main", "", {
+                includeCommitMessages: false,
+                includeChangedFiles: false,
+                includeGitDiff: false,
+            });
+
+            expect(result).not.toContain("Commit messages:");
+            expect(getCommitMessages).not.toHaveBeenCalled();
+        });
+
+        test("should not include changed files when disabled", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue(["a.js"]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main", "", {
+                includeChangedFiles: false,
+                includeCommitMessages: false,
+                includeGitDiff: false,
+            });
+
+            expect(result).not.toContain("Changed files:");
+            expect(getChangedFiles).not.toHaveBeenCalled();
+        });
+
+        test("should not include JIRA tickets when empty", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main", "");
+            expect(result).not.toContain("Related JIRA tickets:");
+        });
+
         test("should include previous result context when regenerating", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue([]);
@@ -163,6 +202,18 @@ describe("prompt-generator", () => {
 
             expect(result).toContain("Generate a professional merge request title and description");
             expect(result).toContain("Related JIRA tickets: PROJ-123");
+        });
+
+        test("should not include JIRA tickets when empty or omitted", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("");
+
+            // Omit third arg entirely
+            const result = await generateDefaultPrompt("feature-branch", "main");
+
+            expect(result).toContain("Generate a professional merge request title and description");
+            expect(result).not.toContain("Related JIRA tickets:");
         });
     });
 

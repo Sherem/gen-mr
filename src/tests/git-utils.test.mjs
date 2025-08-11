@@ -36,6 +36,69 @@ const callError =
         };
 
 describe("git-utils", () => {
+    describe("getUpstreamRef", () => {
+        test("returns upstream ref when configured", async () => {
+            execMock.mockImplementation(callWith("origin/feature-x\n"));
+            const ref = await gitUtils.getUpstreamRef("feature-x");
+            expect(ref).toBe("origin/feature-x");
+            expect(execMock).toHaveBeenCalledWith(
+                "git rev-parse --abbrev-ref feature-x@{u}",
+                expect.any(Function)
+            );
+        });
+
+        test("returns null when no upstream configured", async () => {
+            execMock.mockImplementation(callError("no upstream"));
+            const ref = await gitUtils.getUpstreamRef("feature-x");
+            expect(ref).toBeNull();
+        });
+    });
+
+    describe("fetchRemote", () => {
+        test("fetches successfully", async () => {
+            execMock.mockImplementation(callWith(""));
+            await expect(gitUtils.fetchRemote("origin")).resolves.toBeUndefined();
+            expect(execMock).toHaveBeenCalledWith("git fetch origin --quiet", expect.any(Function));
+        });
+
+        test("throws on fetch error", async () => {
+            execMock.mockImplementation(callError("fetch failed"));
+            await expect(gitUtils.fetchRemote("origin")).rejects.toThrow(
+                "Failed to fetch remote: fetch failed"
+            );
+        });
+    });
+
+    describe("getAheadBehind", () => {
+        test("parses behind and ahead counts", async () => {
+            execMock.mockImplementation(callWith("2 3\n"));
+            const res = await gitUtils.getAheadBehind("origin/feat", "feat");
+            expect(res).toEqual({ behind: 2, ahead: 3 });
+            expect(execMock).toHaveBeenCalledWith(
+                "git rev-list --left-right --count origin/feat...feat",
+                expect.any(Function)
+            );
+        });
+
+        test("handles single number and whitespace variations", async () => {
+            execMock.mockImplementation(callWith("0    0\n"));
+            const res = await gitUtils.getAheadBehind("origin/feat", "feat");
+            expect(res).toEqual({ behind: 0, ahead: 0 });
+        });
+
+        test("returns zeros when stdout is empty", async () => {
+            execMock.mockImplementation(callWith("\n"));
+            const res = await gitUtils.getAheadBehind("origin/feat", "feat");
+            expect(res).toEqual({ behind: 0, ahead: 0 });
+        });
+
+        test("throws on exec error", async () => {
+            execMock.mockImplementation(callError("compare failed"));
+            await expect(gitUtils.getAheadBehind("origin/feat", "feat")).rejects.toThrow(
+                "Failed to compare with upstream: compare failed"
+            );
+        });
+    });
     describe("parseRepoFromRemote", () => {
         test("parses SSH URLs", () => {
             const sshUrl = "git@github.com:owner/repo";
@@ -269,6 +332,22 @@ describe("git-utils", () => {
             execMock.mockImplementation(callError("rev-list failed"));
             await expect(gitUtils.branchesHaveDifferences("feature", "main")).rejects.toThrow(
                 "Failed to check branch differences: rev-list failed"
+            );
+        });
+    });
+
+    describe("getCurrentBranch", () => {
+        test("returns current branch name", async () => {
+            execMock.mockImplementation(callWith("feature-xyz\n"));
+            await expect(gitUtils.getCurrentBranch()).resolves.toBe("feature-xyz");
+            expect(execMock).toHaveBeenCalled();
+            expect(execMock.mock.calls[0][0]).toBe("git rev-parse --abbrev-ref HEAD");
+        });
+
+        test("throws on exec error", async () => {
+            execMock.mockImplementation(callError("branch failed"));
+            await expect(gitUtils.getCurrentBranch()).rejects.toThrow(
+                "Failed to get current branch: branch failed"
             );
         });
     });

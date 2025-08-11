@@ -4,6 +4,7 @@
 import { generateMergeRequestWithChatGPT } from "./ai/chatgpt.mjs";
 import { generateMergeRequestPrompt } from "./prompt-generator.mjs";
 import { validateGitContext } from "./git-utils.mjs";
+import { formatSourceBranchDisplay } from "./utils/branch-format.mjs";
 
 /**
  * Generate merge request title and description using the specified AI model
@@ -90,7 +91,11 @@ export const generateMergeRequestSafe = async (
 
     try {
         if (verbose) {
-            console.log(`🔍 Generating merge request for ${sourceBranch} → ${targetBranch}`);
+            // Prefer a preformatted display name when provided (includes remote tracking info)
+            const displaySource = options.displaySourceBranch
+                ? options.displaySourceBranch
+                : formatSourceBranchDisplay(sourceBranch);
+            console.log(`🔍 Generating merge request for ${displaySource} → ${targetBranch}`);
             if (jiraTickets) {
                 console.log(`🎫 Including JIRA tickets: ${jiraTickets}`);
             }

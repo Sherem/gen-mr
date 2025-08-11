@@ -7,6 +7,19 @@ import { promisify } from "util";
 const execAsync = promisify(exec);
 
 /**
+ * Get current git branch name
+ * @returns {Promise<string>} Current branch name
+ */
+export const getCurrentBranch = async () => {
+    try {
+        const { stdout } = await execAsync("git rev-parse --abbrev-ref HEAD");
+        return stdout.trim();
+    } catch (error) {
+        throw new Error(`Failed to get current branch: ${error.message}`);
+    }
+};
+
+/**
  * Get git diff between two branches
  * @param {string} sourceBranch - Source branch name
  * @param {string} targetBranch - Target branch name
@@ -206,5 +219,52 @@ export const branchesHaveDifferences = async (sourceBranch, targetBranch) => {
         return commitCount > 0;
     } catch (error) {
         throw new Error(`Failed to check branch differences: ${error.message}`);
+    }
+};
+
+/**
+ * Get the upstream tracking ref for a local branch (e.g., origin/feature-x)
+ * @param {string} localBranch
+ * @returns {Promise<string|null>} upstream ref or null if none is configured
+ */
+export const getUpstreamRef = async (localBranch) => {
+    try {
+        const { stdout } = await execAsync(`git rev-parse --abbrev-ref ${localBranch}@{u}`);
+        return stdout.trim();
+    } catch {
+        return null;
+    }
+};
+
+/**
+ * Fetch from a specific remote
+ * @param {string} remote
+ * @returns {Promise<void>}
+ */
+export const fetchRemote = async (remote) => {
+    try {
+        await execAsync(`git fetch ${remote} --quiet`);
+    } catch (error) {
+        throw new Error(`Failed to fetch remote: ${error.message}`);
+    }
+};
+
+/**
+ * Compute ahead/behind counts between upstream and local branch
+ * @param {string} upstreamRef - like origin/feature-x
+ * @param {string} localBranch - local branch name
+ * @returns {Promise<{behind:number,ahead:number}>}
+ */
+export const getAheadBehind = async (upstreamRef, localBranch) => {
+    try {
+        const { stdout } = await execAsync(
+            `git rev-list --left-right --count ${upstreamRef}...${localBranch}`
+        );
+        const [behindStr, aheadStr] = stdout.trim().split(/\s+/);
+        const behind = parseInt(behindStr || "0", 10);
+        const ahead = parseInt(aheadStr || "0", 10);
+        return { behind, ahead };
+    } catch (error) {
+        throw new Error(`Failed to compare with upstream: ${error.message}`);
     }
 };
