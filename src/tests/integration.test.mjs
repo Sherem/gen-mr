@@ -7,6 +7,7 @@ describe("System Integration Tests", () => {
         await expect(import("../prompt-generator.mjs")).resolves.toBeDefined();
         await expect(import("../github-utils.mjs")).resolves.toBeDefined();
         await expect(import("../merge-request-generator.mjs")).resolves.toBeDefined();
+        await expect(import("../config/validation.mjs")).resolves.toBeDefined();
     });
 
     test("should have proper module exports", async () => {

@@ -14,6 +14,7 @@ import { configureChatGPTToken, showAiTokenConfigHelp } from "./ai/chatgpt.mjs";
 import { setChatGPTModel, showChatGPTModelsHelp, CHATGPT_MODELS } from "./ai/chatgpt.mjs";
 import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
 import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
+import { getCurrentBranch } from "./git-utils.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: { g: "global" },
@@ -43,6 +44,7 @@ const showUsage = () => {
     console.log("=".repeat(45));
     console.log("Usage:");
     console.log("  gen-mr <sourceBranch> <targetBranch> [jiraTickets]");
+    console.log("  gen-mr <targetBranch> [jiraTickets]  # uses current branch as source");
     console.log("  gen-mr --create-ai-token <LLM> [--global | -g]");
     console.log("  gen-mr --use-model <model> [--global | -g]");
     console.log("  gen-mr --configure-editor [--global | -g]");
@@ -157,15 +159,41 @@ const main = async () => {
         }
     }
 
-    // Extract positional arguments
-    const sourceBranch = positionalArgs[0];
-    const targetBranch = positionalArgs[1];
-    const jiraTickets = positionalArgs[2] || "";
+    // Extract positional arguments with fallback behavior:
+    // - If two+ args: [source, target, tickets]
+    // - If one arg: [currentBranch, target, tickets]
+    // - If zero: error
+    let sourceBranch = positionalArgs[0];
+    let targetBranch = positionalArgs[1];
+    let jiraTickets = positionalArgs[2] || "";
 
-    // Check for required arguments
+    if (!sourceBranch && !targetBranch && positionalArgs.length === 0) {
+        console.log("❌ Error: Missing required arguments");
+        console.log(
+            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
+        );
+        showUsage();
+        process.exit(1);
+    }
+
+    if (positionalArgs.length === 1) {
+        try {
+            const current = await getCurrentBranch();
+            targetBranch = positionalArgs[0];
+            sourceBranch = current;
+            jiraTickets = "";
+        } catch (error) {
+            console.error("❌ Failed to detect current branch:", error.message);
+            process.exit(1);
+        }
+    }
+
+    // Final required arguments check
     if (!sourceBranch || !targetBranch) {
         console.log("❌ Error: Missing required arguments");
-        console.log("💡 You need to provide source and target branches");
+        console.log(
+            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
+        );
         showUsage();
         process.exit(1);
     }

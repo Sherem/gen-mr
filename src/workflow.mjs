@@ -284,7 +284,8 @@ export const executePRWorkflow = async (
     targetBranch,
     jiraTickets = "",
     config,
-    githubRepo
+    githubRepo,
+    remoteSourceBranch
 ) => {
     const rl = readline.createInterface({
         input: process.stdin,
@@ -304,7 +305,7 @@ export const executePRWorkflow = async (
         console.log("🔍 Checking for existing pull requests...");
         const existingPR = await findExistingPullRequest(
             githubRepo,
-            sourceBranch,
+            remoteSourceBranch || sourceBranch,
             targetBranch,
             githubToken
         );

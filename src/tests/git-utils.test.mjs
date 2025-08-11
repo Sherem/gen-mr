@@ -23,17 +23,17 @@ beforeEach(() => {
 
 const callWith =
     (stdout = "", stderr = "") =>
-        (cmd, optionsOrCb, maybeCb) => {
-            const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
-            cb(null, stdout, stderr);
-        };
+    (cmd, optionsOrCb, maybeCb) => {
+        const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
+        cb(null, stdout, stderr);
+    };
 
 const callError =
     (message = "boom") =>
-        (cmd, optionsOrCb, maybeCb) => {
-            const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
-            cb(new Error(message));
-        };
+    (cmd, optionsOrCb, maybeCb) => {
+        const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
+        cb(new Error(message));
+    };
 
 describe("git-utils", () => {
     describe("parseRepoFromRemote", () => {
@@ -269,6 +269,22 @@ describe("git-utils", () => {
             execMock.mockImplementation(callError("rev-list failed"));
             await expect(gitUtils.branchesHaveDifferences("feature", "main")).rejects.toThrow(
                 "Failed to check branch differences: rev-list failed"
+            );
+        });
+    });
+
+    describe("getCurrentBranch", () => {
+        test("returns current branch name", async () => {
+            execMock.mockImplementation(callWith("feature-xyz\n"));
+            await expect(gitUtils.getCurrentBranch()).resolves.toBe("feature-xyz");
+            expect(execMock).toHaveBeenCalled();
+            expect(execMock.mock.calls[0][0]).toBe("git rev-parse --abbrev-ref HEAD");
+        });
+
+        test("throws on exec error", async () => {
+            execMock.mockImplementation(callError("branch failed"));
+            await expect(gitUtils.getCurrentBranch()).rejects.toThrow(
+                "Failed to get current branch: branch failed"
             );
         });
     });

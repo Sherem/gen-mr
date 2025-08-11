@@ -8,21 +8,29 @@
             "type": "node",
             "request": "launch",
             "name": "Gen-pr token",
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "program": "${workspaceFolder}/src/gen-pr.mjs",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
-            "args": ["--create-token"]
+            "args": [
+                "--create-token"
+            ]
         },
         {
             "type": "node",
             "request": "launch",
             "name": "Gen-pr",
-            "skipFiles": ["<node_internals>/**"],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "program": "${workspaceFolder}/src/gen-pr.mjs",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
-            "args": ["refactor-workflow", "main"]
+            "args": [
+                "main"
+            ]
         }
     ]
 }

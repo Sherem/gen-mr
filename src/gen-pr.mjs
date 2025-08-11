@@ -6,7 +6,10 @@ import minimist from "minimist";
 import { configureGithubToken, showTokenConfigHelp } from "./config/token-config.mjs";
 import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
 import { showCurrentConfig } from "./config/common.mjs";
-import { validateConfigAndRepository } from "./config/validation.mjs";
+import {
+    validateConfigAndRepository,
+    validateBranchSyncAndGetRemote,
+} from "./config/validation.mjs";
 import {
     configureChatGPTToken,
     showAiTokenConfigHelp,
@@ -15,6 +18,7 @@ import {
     CHATGPT_MODELS,
 } from "./ai/chatgpt.mjs";
 import { executePRWorkflow } from "./workflow.mjs";
+import { getCurrentBranch } from "./git-utils.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -30,6 +34,7 @@ const showUsage = () => {
     console.log("=".repeat(45));
     console.log("Usage:");
     console.log("  gen-pr <sourceBranch> <targetBranch> [jiraTickets] [options]");
+    console.log("  gen-pr <targetBranch> [jiraTickets] [options]  # uses current branch as source");
     console.log("  gen-pr --create-token [--global | -g]");
     console.log("  gen-pr --create-ai-token <LLM> [--global | -g]");
     console.log("  gen-pr --use-model <model> [--global | -g]");
@@ -168,15 +173,41 @@ const main = async () => {
         }
     }
 
-    // Extract positional arguments
-    const sourceBranch = positionalArgs[0];
-    const targetBranch = positionalArgs[1];
-    const jiraTickets = positionalArgs[2] || "";
+    // Extract positional arguments with fallback behavior:
+    // - If two+ args: [source, target, tickets]
+    // - If one arg: [currentBranch, target, tickets]
+    // - If zero: error
+    let sourceBranch = positionalArgs[0];
+    let targetBranch = positionalArgs[1];
+    let jiraTickets = positionalArgs[2] || "";
 
-    // Check for required arguments
+    if (!sourceBranch && !targetBranch && positionalArgs.length === 0) {
+        console.log("❌ Error: Missing required arguments");
+        console.log(
+            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
+        );
+        showUsage();
+        process.exit(1);
+    }
+
+    if (positionalArgs.length === 1) {
+        try {
+            const current = await getCurrentBranch();
+            targetBranch = positionalArgs[0];
+            sourceBranch = current;
+            jiraTickets = "";
+        } catch (error) {
+            console.error("❌ Failed to detect current branch:", error.message);
+            process.exit(1);
+        }
+    }
+
+    // Final required arguments check
     if (!sourceBranch || !targetBranch) {
         console.log("❌ Error: Missing required arguments");
-        console.log("💡 You need to provide source and target branches");
+        console.log(
+            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
+        );
         showUsage();
         process.exit(1);
     }
@@ -192,8 +223,25 @@ const main = async () => {
 
     const { config, githubRepo } = validationResult;
 
+    // Ensure local source branch is fully synced to its upstream and get the remote-tracked name
+    let remoteSourceBranch;
+    try {
+        const { githubSourceBranch } = await validateBranchSyncAndGetRemote(sourceBranch);
+        remoteSourceBranch = githubSourceBranch;
+    } catch (error) {
+        console.log(`❌ Error: ${error.message}`);
+        process.exit(1);
+    }
+
     // Call function from workflow
-    await executePRWorkflow(sourceBranch, targetBranch, jiraTickets, config, githubRepo);
+    await executePRWorkflow(
+        sourceBranch,
+        targetBranch,
+        jiraTickets,
+        config,
+        githubRepo,
+        remoteSourceBranch
+    );
 };
 
 main();
