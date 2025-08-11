@@ -43,7 +43,7 @@ export const getEditorCommand = async () => {
  * @param {string} fileExtension - File extension for syntax highlighting (default: '.md')
  * @returns {Promise<string>} The edited content
  */
-const executeEditor = async (editorCommand, content, fileExtension = ".md") => {
+const executeEditor = async (editorCommand, content, line = 1, fileExtension = ".md") => {
     const tempDir = os.tmpdir();
     const tempFileName = `gen-mr-edit-${Date.now()}${fileExtension}`;
     const tempFilePath = path.join(tempDir, tempFileName);
@@ -54,7 +54,9 @@ const executeEditor = async (editorCommand, content, fileExtension = ".md") => {
 
         // Execute editor command
         const { spawn } = await import("child_process");
-        const command = editorCommand.replace(/\{line\}/g, "1").replace(/\{file\}/g, tempFilePath);
+        const command = editorCommand
+            .replace(/\{line\}/g, `"${line}"`)
+            .replace(/\{file\}/g, tempFilePath);
         const commandParts = command.split(/\s+/);
         const executable = commandParts[0];
         const args = commandParts.slice(1).concat([tempFilePath]);
@@ -97,7 +99,7 @@ const executeEditor = async (editorCommand, content, fileExtension = ".md") => {
  * @param {string} fileExtension - File extension for syntax highlighting (e.g., '.md', '.txt')
  * @returns {Promise<string>} The edited content
  */
-export const openInEditor = async (content, fileExtension = ".md") => {
+export const openInEditor = async (content, line = 1, fileExtension = ".md") => {
     const editorCommand = await getEditorCommand();
 
     if (!editorCommand) {
@@ -106,7 +108,7 @@ export const openInEditor = async (content, fileExtension = ".md") => {
         );
     }
 
-    return await executeEditor(editorCommand, content, fileExtension);
+    return await executeEditor(editorCommand, content, line, fileExtension);
 };
 
 /**
@@ -117,12 +119,12 @@ export const openInEditor = async (content, fileExtension = ".md") => {
  * @param {string} fileExtension - File extension for syntax highlighting (default: '.md')
  * @returns {Promise<{title: string, description: string}>} The edited title and description
  */
-export const editPullRequestContent = async (title, description, fileExtension = ".md") => {
+export const editPullRequestContent = async (title, description, line, fileExtension = ".md") => {
     // Create content with title on first line, separator, then description
     const content = `${title}\n\n---\n\n${description}`;
 
     // Execute editor and get edited content
-    const editedContent = await openInEditor(content, fileExtension);
+    const editedContent = await openInEditor(content, line, fileExtension);
 
     // Parse the edited content back into title and description
     const lines = editedContent.split("\n");

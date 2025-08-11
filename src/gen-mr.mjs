@@ -267,6 +267,7 @@ const main = async () => {
                     const editedContent = await editPullRequestContent(
                         finalTitle,
                         finalDescription,
+                        1,
                         ".md"
                     );
 
