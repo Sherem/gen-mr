@@ -52,6 +52,8 @@ export const generateMergeRequestPrompt = async (
             const commits = await getCommitMessages(sourceBranch, targetBranch);
             if (commits.length > 0) {
                 prompt += `\n\nCommit messages:\n${commits.map((msg) => `- ${msg}`).join("\n")}`;
+            } else {
+                prompt += `\n\nCommit messages: No commit messages found.`;
             }
         }
 
@@ -60,6 +62,8 @@ export const generateMergeRequestPrompt = async (
             const files = await getChangedFiles(sourceBranch, targetBranch);
             if (files.length > 0) {
                 prompt += `\n\nChanged files:\n${files.map((file) => `- ${file}`).join("\n")}`;
+            } else {
+                prompt += `\n\nChanged files: No changed files found.`;
             }
         }
 
@@ -74,6 +78,8 @@ export const generateMergeRequestPrompt = async (
                 if (diff.split("\n").length > maxDiffLines) {
                     prompt += "\n... (diff truncated for brevity)";
                 }
+            } else {
+                prompt += "\n\nCode changes: No code changes found.";
             }
         }
     } catch (error) {
