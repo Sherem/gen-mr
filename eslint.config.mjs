@@ -37,6 +37,7 @@ export default [
                     printWidth: 100,
                     tabWidth: 4,
                     useTabs: false,
+                    bracketSpacing: true,
                 },
             ],
             "no-unused-vars": "warn",

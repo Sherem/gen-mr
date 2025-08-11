@@ -125,7 +125,9 @@ describe("prompt-generator", () => {
             getChangedFiles.mockRejectedValue(new Error("Git error"));
             getGitDiff.mockRejectedValue(new Error("Git error"));
 
-            const consoleSpy = jest.spyOn(console, "warn").mockImplementation(() => { });
+            const consoleSpy = jest.spyOn(console, "warn").mockImplementation(() => {
+                return;
+            });
 
             const result = await generateMergeRequestPrompt("feature-branch", "main");
 

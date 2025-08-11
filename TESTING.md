@@ -16,16 +16,19 @@ src/tests/
 ## Running Tests
 
 ### Basic test run
+
 ```bash
 npm test
 ```
 
 ### Watch mode (reruns tests when files change)
+
 ```bash
 npm run test:watch
 ```
 
 ### Coverage report
+
 ```bash
 npm run test:coverage
 ```
@@ -38,10 +41,12 @@ npm run test:coverage
 ## Test Categories
 
 ### Unit Tests
+
 - `git-utils.test.mjs`: Tests utility functions for Git operations like `parseRepoFromRemote` and `detectRepoType`
 - `prompt-generator.test.mjs`: Tests AI prompt generation functions with mocked dependencies
 
 ### Integration Tests
+
 - `integration.test.mjs`: Tests module imports and package configuration
 
 ## Writing Tests
@@ -74,8 +79,9 @@ jest.mock("../git-utils.mjs", () => ({
 ## Coverage
 
 The coverage report shows:
+
 - **Statement coverage**: Percentage of statements executed
-- **Branch coverage**: Percentage of branches (if/else) executed  
+- **Branch coverage**: Percentage of branches (if/else) executed
 - **Function coverage**: Percentage of functions called
 - **Line coverage**: Percentage of lines executed
 

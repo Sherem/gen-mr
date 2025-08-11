@@ -7,23 +7,9 @@
     "transform": {
         "^.+\\.mjs$": "babel-jest"
     },
-    "moduleFileExtensions": [
-        "mjs",
-        "js"
-    ],
-    "testMatch": [
-        "<rootDir>/src/tests/**/*.test.mjs",
-        "<rootDir>/src/tests/**/*.spec.mjs"
-    ],
-    "collectCoverageFrom": [
-        "src/**/*.mjs",
-        "!src/tests/**",
-        "!**/node_modules/**"
-    ],
+    "moduleFileExtensions": ["mjs", "js"],
+    "testMatch": ["<rootDir>/src/tests/**/*.test.mjs", "<rootDir>/src/tests/**/*.spec.mjs"],
+    "collectCoverageFrom": ["src/**/*.mjs", "!src/tests/**", "!**/node_modules/**"],
     "coverageDirectory": "coverage",
-    "coverageReporters": [
-        "text",
-        "lcov",
-        "html"
-    ]
+    "coverageReporters": ["text", "lcov", "html"]
 }
