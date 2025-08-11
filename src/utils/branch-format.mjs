@@ -12,5 +12,8 @@ export const formatSourceBranchDisplay = (local, remoteName, remoteBranch) => {
     if (remoteName && remoteBranch && remoteBranch !== local) {
         return `${local} (${remoteName}/${remoteBranch})`;
     }
+    if (remoteName !== "origin") {
+        return `${local} (${remoteName}/${local})`;
+    }
     return String(local || "");
 };

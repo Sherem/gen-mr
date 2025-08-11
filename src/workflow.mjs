@@ -316,7 +316,13 @@ export const executePRWorkflow = async (
         let result;
 
         if (existingPR) {
+            const displaySource = formatSourceBranchDisplay(
+                remoteSourceBranch || sourceBranch,
+                remoteName,
+                remoteSourceBranch
+            );
             console.log("📋 Found existing pull request:");
+            console.log(`🔍 Source → target: ${displaySource} → ${targetBranch}`);
             console.log(`   URL: ${existingPR.html_url}`);
             console.log(`   Status: ${existingPR.state}`);
             console.log(`   Title: ${existingPR.title}`);
