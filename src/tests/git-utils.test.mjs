@@ -23,17 +23,17 @@ beforeEach(() => {
 
 const callWith =
     (stdout = "", stderr = "") =>
-        (cmd, optionsOrCb, maybeCb) => {
-            const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
-            cb(null, stdout, stderr);
-        };
+    (cmd, optionsOrCb, maybeCb) => {
+        const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
+        cb(null, stdout, stderr);
+    };
 
 const callError =
     (message = "boom") =>
-        (cmd, optionsOrCb, maybeCb) => {
-            const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
-            cb(new Error(message));
-        };
+    (cmd, optionsOrCb, maybeCb) => {
+        const cb = typeof optionsOrCb === "function" ? optionsOrCb : maybeCb;
+        cb(new Error(message));
+    };
 
 describe("git-utils", () => {
     describe("getUpstreamRef", () => {

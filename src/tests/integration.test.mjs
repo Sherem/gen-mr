@@ -5,7 +5,7 @@ describe("System Integration Tests", () => {
         // Test that main modules can be imported successfully
         await expect(import("../git-utils.mjs")).resolves.toBeDefined();
         await expect(import("../prompt-generator.mjs")).resolves.toBeDefined();
-        await expect(import("../github-utils.mjs")).resolves.toBeDefined();
+        await expect(import("../repo-providers/github-provider.mjs")).resolves.toBeDefined();
         await expect(import("../merge-request-generator.mjs")).resolves.toBeDefined();
         await expect(import("../config/validation.mjs")).resolves.toBeDefined();
     });
@@ -13,6 +13,7 @@ describe("System Integration Tests", () => {
     test("should have proper module exports", async () => {
         const gitUtils = await import("../git-utils.mjs");
         const promptGenerator = await import("../prompt-generator.mjs");
+        const githubUtils = await import("../repo-providers/github-provider.mjs");
 
         // Check that expected functions are exported
         expect(typeof gitUtils.parseRepoFromRemote).toBe("function");
@@ -22,6 +23,11 @@ describe("System Integration Tests", () => {
         expect(typeof promptGenerator.generateMergeRequestPrompt).toBe("function");
         expect(typeof promptGenerator.generateDefaultPrompt).toBe("function");
         expect(typeof promptGenerator.generateMinimalPrompt).toBe("function");
+
+        // github-utils should expose a factory
+        expect(typeof githubUtils.createGithubProvider).toBe("function");
+        // Backward compatibility alias
+        expect(typeof githubUtils.createGithubUtils).toBe("function");
     });
 
     test("package.json should have correct test scripts", async () => {

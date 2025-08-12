@@ -19,6 +19,7 @@ import {
 } from "./ai/chatgpt.mjs";
 import { executePRWorkflow } from "./workflow.mjs";
 import { getCurrentBranch } from "./git-utils.mjs";
+import { createGithubProvider } from "./repo-providers/github-provider.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -261,6 +262,10 @@ const main = async () => {
     }
 
     // Call function from workflow
+    // Create GitHub utils bound to token and pass to workflow
+    // Instantiate repository provider (GitHub implementation)
+    const repoProvider = createGithubProvider({ githubToken: config.githubToken });
+
     await executePRWorkflow(
         sourceBranch,
         targetBranch,
@@ -269,7 +274,8 @@ const main = async () => {
         githubRepo,
         remoteSourceBranch,
         remoteTargetBranch,
-        upstreamRemoteName || remoteName
+        upstreamRemoteName || remoteName,
+        repoProvider
     );
 };
 
