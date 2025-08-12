@@ -14,7 +14,7 @@ import { configureChatGPTToken, showAiTokenConfigHelp } from "./ai/chatgpt.mjs";
 import { setChatGPTModel, showChatGPTModelsHelp, CHATGPT_MODELS } from "./ai/chatgpt.mjs";
 import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
 import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
-import { getCurrentBranch } from "./git-utils.mjs";
+import { getCurrentBranch } from "./git-provider/git-provider.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: { g: "global" },

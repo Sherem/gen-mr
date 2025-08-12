@@ -18,7 +18,7 @@ import {
     CHATGPT_MODELS,
 } from "./ai/chatgpt.mjs";
 import { executePRWorkflow } from "./workflow.mjs";
-import { getCurrentBranch } from "./git-utils.mjs";
+import { getCurrentBranch } from "./git-provider/git-provider.mjs";
 import { createGithubProvider } from "./repo-providers/github-provider.mjs";
 
 const argv = minimist(process.argv.slice(2), {

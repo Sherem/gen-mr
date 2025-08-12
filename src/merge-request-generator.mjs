@@ -3,7 +3,7 @@
 
 import { generateMergeRequestWithChatGPT } from "./ai/chatgpt.mjs";
 import { generateMergeRequestPrompt } from "./prompt-generator.mjs";
-import { validateGitContext } from "./git-utils.mjs";
+import { validateGitContext } from "./git-provider/git-provider.mjs";
 import { formatSourceBranchDisplay } from "./utils/branch-format.mjs";
 
 /**

@@ -1,4 +1,4 @@
-// git-utils.mjs
+// git-provider.mjs
 // Handles git operations and prompt generation for merge requests
 
 import { exec } from "child_process";
@@ -97,11 +97,11 @@ export const getChangedFilesByType = async (sourceBranch, targetBranch) => {
             .filter((line) => line.length > 0)
             .forEach((line) => {
                 // name-status format examples:
-                // A	path/file.js
-                // M	path/file.js
-                // D	path/file.js
-                // R100	old/path/file.js	new/path/file.js
-                // C75	orig/file.js	copy/file.js
+                // A\tpath/file.js
+                // M\tpath/file.js
+                // D\tpath/file.js
+                // R100\told/path/file.js\tnew/path/file.js
+                // C75\torig/file.js\tcopy/file.js
                 const parts = line.split(/\t+/);
                 if (parts.length === 0) return;
                 const status = parts[0];

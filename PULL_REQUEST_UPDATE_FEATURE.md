@@ -58,7 +58,7 @@
 - `patchToGithub()` - PATCH requests to GitHub API
 - `findExistingPullRequest()` - Check for existing PRs
 
-### In `git-utils.mjs`:
+### In `git-provider/git-provider.mjs` (previously `git-utils.mjs`):
 
 - `branchesHaveDifferences()` - Check if branches have commits to merge
 

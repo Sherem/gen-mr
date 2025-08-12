@@ -25,7 +25,7 @@ src/
 │   ├── common.mjs           # Configuration management utilities
 │   ├── editor-config.mjs    # Editor configuration
 │   └── token-config.mjs     # GitHub token configuration
-├── git-utils.mjs            # Git operations and prompt generation
+├── git-provider/            # Git operations provider (was git-utils.mjs)
 ├── merge-request-generator.mjs  # Main functionality for generating MR/PR content
 ├── gen-mr.mjs              # GitLab merge request CLI
 └── gen-pr.mjs              # GitHub pull request CLI
@@ -34,7 +34,7 @@ src/
 ### Key Modules
 
 - **`ai/chatgpt.mjs`**: Handles all ChatGPT API requests, token validation, and model selection
-- **`git-utils.mjs`**: Manages git operations (diffs, commit messages, file changes) and prompt generation
+- **`git-provider/git-provider.mjs`**: Manages git operations (diffs, commit messages, file changes) and prompt generation
 - **`merge-request-generator.mjs`**: Core functionality that orchestrates git analysis and AI generation
 - **`config/common.mjs`**: Configuration file management (local and global)
 - **`config/token-config.mjs`**: GitHub token setup and validation
@@ -199,7 +199,7 @@ gen-mr/
 │   │   └── chatgpt.mjs      # ChatGPT API integration
 │   ├── gen-mr.mjs          # GitLab merge request CLI
 │   ├── gen-pr.mjs          # GitHub pull request CLI
-│   ├── git-utils.mjs       # Git operations utilities
+│   ├── git-provider/       # Git operations utilities (renamed from git-utils.mjs)
 │   ├── repo-providers/
 │   │   └── github-provider.mjs # GitHub API provider (replaces deprecated github-utils.mjs)
 │   ├── merge-request-generator.mjs # Core MR/PR generation logic

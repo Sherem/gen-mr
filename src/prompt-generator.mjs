@@ -6,7 +6,7 @@ import {
     getCommitMessages,
     getChangedFiles,
     getChangedFilesByType,
-} from "./git-utils.mjs";
+} from "./git-provider/git-provider.mjs";
 
 /**
  * Build the changed files section string listing Modified / Added / Deleted groups.

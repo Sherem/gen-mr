@@ -12,9 +12,10 @@
         "js"
     ],
     "testMatch": [
+        "<rootDir>/src/git-provider/tests/**/*.test.mjs",
+        "<rootDir>/src/repo-providers/tests/**/*.test.mjs",
         "<rootDir>/src/tests/**/*.test.mjs",
-        "<rootDir>/src/tests/**/*.spec.mjs",
-        "<rootDir>/src/repo-providers/tests/**/*.test.mjs"
+        "<rootDir>/src/tests/**/*.spec.mjs"
     ],
     "collectCoverageFrom": [
         "src/**/*.mjs",

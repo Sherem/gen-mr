@@ -3,7 +3,7 @@ import { describe, test, expect } from "@jest/globals";
 describe("System Integration Tests", () => {
     test("should be able to import main modules without errors", async () => {
         // Test that main modules can be imported successfully
-        await expect(import("../git-utils.mjs")).resolves.toBeDefined();
+        await expect(import("../git-provider/git-provider.mjs")).resolves.toBeDefined();
         await expect(import("../prompt-generator.mjs")).resolves.toBeDefined();
         await expect(import("../repo-providers/github-provider.mjs")).resolves.toBeDefined();
         await expect(import("../merge-request-generator.mjs")).resolves.toBeDefined();
@@ -11,7 +11,7 @@ describe("System Integration Tests", () => {
     });
 
     test("should have proper module exports", async () => {
-        const gitUtils = await import("../git-utils.mjs");
+        const gitUtils = await import("../git-provider/git-provider.mjs");
         const promptGenerator = await import("../prompt-generator.mjs");
         const githubUtils = await import("../repo-providers/github-provider.mjs");
 
