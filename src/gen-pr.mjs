@@ -7,10 +7,6 @@ import { configureGithubToken, showTokenConfigHelp } from "./config/token-config
 import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
 import { showCurrentConfig } from "./config/common.mjs";
 import {
-    validateConfigAndRepository,
-    validateBranchSyncAndGetRemote,
-} from "./config/validation.mjs";
-import {
     configureChatGPTToken,
     showAiTokenConfigHelp,
     setChatGPTModel,
@@ -18,8 +14,6 @@ import {
     CHATGPT_MODELS,
 } from "./ai/chatgpt.mjs";
 import { executePRWorkflow } from "./workflow.mjs";
-import { getCurrentBranch } from "./git-provider/git-provider.mjs";
-import { createGithubProvider } from "./repo-providers/github-provider.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -177,106 +171,14 @@ const main = async () => {
         }
     }
 
-    // Extract positional arguments with fallback behavior:
-    // - If two+ args: [source, target, tickets]
-    // - If one arg: [currentBranch, target, tickets]
-    // - If zero: error
-    let sourceBranch = positionalArgs[0];
-    let targetBranch = positionalArgs[1];
-    let jiraTickets = positionalArgs[2] || "";
+    // Map positional arguments to named args for validation/workflow
+    const args = {
+        sourceBranch: positionalArgs[0],
+        targetBranch: positionalArgs[1],
+        jiraTickets: positionalArgs[2],
+    };
 
-    if (!sourceBranch && !targetBranch && positionalArgs.length === 0) {
-        console.log("❌ Error: Missing required arguments");
-        console.log(
-            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
-        );
-        showUsage();
-        process.exit(1);
-    }
-
-    if (positionalArgs.length === 1) {
-        try {
-            const current = await getCurrentBranch();
-            targetBranch = positionalArgs[0];
-            sourceBranch = current;
-            jiraTickets = "";
-        } catch (error) {
-            console.error("❌ Failed to detect current branch:", error.message);
-            process.exit(1);
-        }
-    }
-
-    // Final required arguments check
-    if (!sourceBranch || !targetBranch) {
-        console.log("❌ Error: Missing required arguments");
-        console.log(
-            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
-        );
-        showUsage();
-        process.exit(1);
-    }
-
-    // Determine remote name (default to origin if not provided)
-    const remoteNameArg = String(argv.remote || "").trim();
-    const remoteName = remoteNameArg || "origin";
-
-    // Validate configuration and repository
-    let validationResult;
-    try {
-        validationResult = await validateConfigAndRepository(remoteName);
-    } catch (error) {
-        console.log(`❌ Error: ${error.message}`);
-        process.exit(1);
-    }
-
-    const { config, githubRepo } = validationResult;
-
-    // Ensure local branches are fully synced to their upstream and get the remote-tracked names
-    let remoteSourceBranch;
-    let sourceSha;
-    let remoteTargetBranch;
-    let targetSha;
-    let upstreamRemoteName;
-    try {
-        ({
-            githubRemoteBranch: remoteSourceBranch,
-            upstreamRemote: upstreamRemoteName,
-            commitSha: sourceSha,
-        } = await validateBranchSyncAndGetRemote(sourceBranch, remoteName));
-    } catch (error) {
-        console.log(`❌ Error: ${error.message}`);
-        process.exit(1);
-    }
-
-    try {
-        ({ githubRemoteBranch: remoteTargetBranch, commitSha: targetSha } =
-            await validateBranchSyncAndGetRemote(targetBranch, remoteName));
-    } catch (error) {
-        console.log(`❌ Error: ${error.message}`);
-        process.exit(1);
-    }
-
-    if (sourceSha === targetSha) {
-        console.log(`❌ Error: Source and target branches at the same commit`);
-        process.exit(1);
-    }
-
-    // Call function from workflow
-    // Create GitHub utils bound to token and pass to workflow
-    // Instantiate repository provider (GitHub implementation)
-    const repoProvider = createGithubProvider({ githubToken: config.githubToken });
-
-    await executePRWorkflow(
-        sourceBranch,
-        targetBranch,
-        jiraTickets,
-        config,
-        githubRepo,
-        remoteSourceBranch,
-        remoteTargetBranch,
-        upstreamRemoteName || remoteName,
-        repoProvider
-    );
+    await executePRWorkflow({ options: argv, args, showUsage });
 };
 
 main().catch((error) => {

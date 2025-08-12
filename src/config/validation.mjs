@@ -8,6 +8,7 @@ import {
     fetchRemote,
     getAheadBehind,
     getCommitSha,
+    getCurrentBranch,
 } from "../git-provider/git-provider.mjs";
 
 /**
@@ -136,4 +137,125 @@ export const validateBranchSyncAndGetRemote = async (localBranch, defaultRemoteN
     const commitSha = await getCommitSha(localBranch);
 
     return { githubRemoteBranch, upstreamRef, upstreamRemote, commitSha };
+};
+
+/**
+ * End-to-end validation for PR creation combining:
+ *  - Positional arguments parsing (source/target/jiraTickets)
+ *  - Optional single-arg mode using current branch as source
+ *  - Remote name resolution
+ *  - Config & repository validation
+ *  - Branch sync validation (source & target)
+ *  - Prevent same-commit PRs
+ *
+ * On validation failure this function prints a helpful message and exits (to preserve current CLI behavior).
+ *
+ * @param {object} params
+ * @param {any} params.options Parsed minimist result (options)
+ * @param {object} params.args Named args { sourceBranch, targetBranch, jiraTickets }
+ * @param {Function} params.showUsage Function to print usage help
+ * @returns {Promise<{
+ *   sourceBranch: string,
+ *   targetBranch: string,
+ *   jiraTickets: string,
+ *   remoteName: string,
+ *   config: object,
+ *   githubRepo: string,
+ *   remoteSourceBranch: string,
+ *   remoteTargetBranch: string,
+ *   upstreamRemoteName: string | undefined,
+ * }>} Aggregated validated data
+ */
+export const validatePRInputAndBranches = async ({ options, args, showUsage }) => {
+    // Named args provided directly; apply fallback behavior:
+    // - If only targetBranch provided (no sourceBranch): use current branch as source
+    // - If neither provided: error
+    let { sourceBranch, targetBranch, jiraTickets } = args;
+    jiraTickets = jiraTickets || "";
+
+    if (!sourceBranch && !targetBranch) {
+        console.log("❌ Error: Missing required arguments");
+        console.log(
+            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
+        );
+        showUsage();
+        process.exit(1);
+    }
+
+    if (!sourceBranch && targetBranch) {
+        try {
+            const current = await getCurrentBranch();
+            sourceBranch = current;
+        } catch (error) {
+            console.error("❌ Failed to detect current branch:", error.message);
+            process.exit(1);
+        }
+    }
+
+    // Final required arguments check
+    if (!sourceBranch || !targetBranch) {
+        console.log("❌ Error: Missing required arguments");
+        console.log(
+            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
+        );
+        showUsage();
+        process.exit(1);
+    }
+
+    // Determine remote name (default to origin if not provided)
+    const remoteNameArg = String(options.remote || "").trim();
+    const remoteName = remoteNameArg || "origin";
+
+    // Validate configuration and repository
+    let validationResult;
+    try {
+        validationResult = await validateConfigAndRepository(remoteName);
+    } catch (error) {
+        console.log(`❌ Error: ${error.message}`);
+        process.exit(1);
+    }
+
+    const { config, githubRepo } = validationResult;
+
+    // Ensure local branches are fully synced to their upstream and get the remote-tracked names
+    let remoteSourceBranch;
+    let sourceSha;
+    let remoteTargetBranch;
+    let targetSha;
+    let upstreamRemoteName;
+    try {
+        ({
+            githubRemoteBranch: remoteSourceBranch,
+            upstreamRemote: upstreamRemoteName,
+            commitSha: sourceSha,
+        } = await validateBranchSyncAndGetRemote(sourceBranch, remoteName));
+    } catch (error) {
+        console.log(`❌ Error: ${error.message}`);
+        process.exit(1);
+    }
+
+    try {
+        ({ githubRemoteBranch: remoteTargetBranch, commitSha: targetSha } =
+            await validateBranchSyncAndGetRemote(targetBranch, remoteName));
+    } catch (error) {
+        console.log(`❌ Error: ${error.message}`);
+        process.exit(1);
+    }
+
+    if (sourceSha === targetSha) {
+        console.log(`❌ Error: Source and target branches at the same commit`);
+        process.exit(1);
+    }
+
+    return {
+        sourceBranch,
+        targetBranch,
+        jiraTickets,
+        remoteName,
+        config,
+        githubRepo,
+        remoteSourceBranch,
+        remoteTargetBranch,
+        upstreamRemoteName,
+    };
 };

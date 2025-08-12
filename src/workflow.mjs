@@ -3,6 +3,8 @@
 
 import readline from "readline";
 import { getEditorCommand, editPullRequestContent, openInEditor } from "./config/common.mjs";
+import { validatePRInputAndBranches } from "./config/validation.mjs";
+import { createGithubProvider } from "./repo-providers/github-provider.mjs";
 import {
     generateMergeRequestSafe,
     getDefaultPromptOptions,
@@ -283,24 +285,28 @@ const handleUserInteraction = async (
  * @param {string} githubRepo - GitHub repository name in format "owner/repo"
  * @returns {Promise<void>}
  */
-export const executePRWorkflow = async (
-    sourceBranch,
-    targetBranch,
-    jiraTickets = "",
-    config,
-    githubRepo,
-    remoteSourceBranch,
-    remoteTargetBranch,
-    remoteName,
-    repoProvider
-) => {
+export const executePRWorkflow = async ({ options, args, showUsage }) => {
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
     });
 
     try {
+        // Perform full validation (args, config, branches)
+        const {
+            sourceBranch,
+            targetBranch,
+            jiraTickets,
+            remoteName,
+            config,
+            githubRepo,
+            remoteSourceBranch,
+            remoteTargetBranch,
+            upstreamRemoteName,
+        } = await validatePRInputAndBranches({ options, args, showUsage });
+
         const { githubToken } = config;
+        const repoProvider = createGithubProvider({ githubToken });
 
         const promptOptions = getDefaultPromptOptions({
             includeGitDiff: true,
@@ -358,7 +364,7 @@ export const executePRWorkflow = async (
                             verbose: true,
                             remoteSourceBranch,
                             remoteTargetBranch,
-                            remoteName,
+                            remoteName: upstreamRemoteName || remoteName,
                         }
                     );
                     break;
@@ -406,7 +412,7 @@ export const executePRWorkflow = async (
                     verbose: true,
                     remoteSourceBranch,
                     remoteTargetBranch,
-                    remoteName,
+                    remoteName: upstreamRemoteName || remoteName,
                 }
             );
         }
