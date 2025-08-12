@@ -13,6 +13,7 @@ describe("System Integration Tests", () => {
     test("should have proper module exports", async () => {
         const gitUtils = await import("../git-utils.mjs");
         const promptGenerator = await import("../prompt-generator.mjs");
+        const githubUtils = await import("../github-utils.mjs");
 
         // Check that expected functions are exported
         expect(typeof gitUtils.parseRepoFromRemote).toBe("function");
@@ -22,6 +23,9 @@ describe("System Integration Tests", () => {
         expect(typeof promptGenerator.generateMergeRequestPrompt).toBe("function");
         expect(typeof promptGenerator.generateDefaultPrompt).toBe("function");
         expect(typeof promptGenerator.generateMinimalPrompt).toBe("function");
+
+        // github-utils should expose a factory
+        expect(typeof githubUtils.createGithubUtils).toBe("function");
     });
 
     test("package.json should have correct test scripts", async () => {

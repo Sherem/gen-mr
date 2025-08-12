@@ -8,7 +8,7 @@ import {
     getDefaultPromptOptions,
     generateMergeRequest,
 } from "./merge-request-generator.mjs";
-import { findExistingPullRequest, createOrUpdatePullRequest } from "./github-utils.mjs";
+// GitHub utils are now provided by a factory and injected from the caller
 import { formatSourceBranchDisplay } from "./utils/branch-format.mjs";
 
 /**
@@ -89,6 +89,7 @@ const regenerateMergeRequest = async (
  * @param {string} jiraTickets - JIRA ticket IDs
  * @param {object} initialResult - Initial MR generation result
  * @param {object} prConfig - PR configuration (repo, token, etc.)
+ * @param {object} githubUtils - Instance of GitHub utils created via factory
  * @returns {Promise<void>}
  */
 const handleUserInteraction = async (
@@ -217,14 +218,13 @@ const handleUserInteraction = async (
 
     const saveMergeRequest = async () => {
         try {
-            await createOrUpdatePullRequest({
+            await prConfig.githubUtils.createOrUpdatePullRequest({
                 githubRepo: prConfig.githubRepo,
                 // Use tracked remote branch for GitHub API operations
                 sourceBranch: prConfig.remoteSourceBranch || sourceBranch,
                 targetBranch: prConfig.remoteTargetBranch || targetBranch,
                 title: currentResult.title,
                 description: currentResult.description,
-                githubToken: prConfig.githubToken,
                 existingPR: prConfig.existingPR,
             });
         } catch {
@@ -291,7 +291,8 @@ export const executePRWorkflow = async (
     githubRepo,
     remoteSourceBranch,
     remoteTargetBranch,
-    remoteName
+    remoteName,
+    githubUtils
 ) => {
     const rl = readline.createInterface({
         input: process.stdin,
@@ -309,11 +310,10 @@ export const executePRWorkflow = async (
 
         // Check if a pull request already exists for these branches
         console.log("🔍 Checking for existing pull requests...");
-        const existingPR = await findExistingPullRequest(
+        const existingPR = await githubUtils.findExistingPullRequest(
             githubRepo,
             remoteSourceBranch || sourceBranch,
-            remoteTargetBranch || targetBranch,
-            githubToken
+            remoteTargetBranch || targetBranch
         );
 
         let result;
@@ -427,6 +427,7 @@ export const executePRWorkflow = async (
             existingPR,
             remoteSourceBranch,
             remoteTargetBranch,
+            githubUtils,
         });
     } catch (error) {
         console.error("❌ Workflow error:", error.message);
