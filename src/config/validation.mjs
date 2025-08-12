@@ -78,7 +78,7 @@ export const validateArguments = async ({ positionalArgs, showUsage }) => {
  * @returns {Promise<object>} Configuration and repository information
  * @throws {Error} If configuration or repository validation fails
  */
-export const validateConfigAndRepository = async (remoteName) => {
+export const validateGitHubConfigAndRepository = async (remoteName) => {
     // Get configuration
     let config;
     try {
@@ -222,30 +222,14 @@ export const validateBranchSyncAndGetRemote = async (localBranch, defaultRemoteN
  *   jiraTickets: string,
  *   remoteName: string,
  *   config: object,
- *   githubRepo: string,
  *   remoteSourceBranch: string,
  *   remoteTargetBranch: string,
  *   upstreamRemoteName: string | undefined,
  * }>} Aggregated validated data
  */
-export const validatePRInputAndBranches = async ({ options, args /* already validated */ }) => {
+export const validatePRInputAndBranches = async ({ args /* already validated */, remoteName }) => {
     // Arguments are assumed validated & present (sourceBranch, targetBranch[, jiraTickets])
     const { sourceBranch, targetBranch, jiraTickets } = args;
-
-    // Determine remote name (default to origin if not provided)
-    const remoteNameArg = String(options.remote || "").trim();
-    const remoteName = remoteNameArg || "origin";
-
-    // Validate configuration and repository
-    let validationResult;
-    try {
-        validationResult = await validateConfigAndRepository(remoteName);
-    } catch (error) {
-        console.log(`❌ Error: ${error.message}`);
-        process.exit(1);
-    }
-
-    const { config, githubRepo } = validationResult;
 
     // Ensure local branches are fully synced to their upstream and get the remote-tracked names
     let remoteSourceBranch;
@@ -282,8 +266,6 @@ export const validatePRInputAndBranches = async ({ options, args /* already vali
         targetBranch,
         jiraTickets,
         remoteName,
-        config,
-        githubRepo,
         remoteSourceBranch,
         remoteTargetBranch,
         upstreamRemoteName,

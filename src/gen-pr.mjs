@@ -14,7 +14,7 @@ import {
     CHATGPT_MODELS,
 } from "./ai/chatgpt.mjs";
 import { executePRWorkflow } from "./workflow.mjs";
-import { validateArguments } from "./config/validation.mjs";
+import { validateArguments, validateGitHubConfigAndRepository } from "./config/validation.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -175,7 +175,23 @@ const main = async () => {
     // Validate positional args and transform into structured args
     const args = await validateArguments({ positionalArgs, showUsage });
 
-    await executePRWorkflow({ options: argv, args, showUsage });
+    // Determine remote name (default origin)
+    const remoteNameArg = String(argv.remote || "").trim();
+    const remoteName = remoteNameArg || "origin";
+
+    // Config & repository validation (moved from validation module)
+    let config;
+    let githubRepo;
+    try {
+        const validationResult = await validateGitHubConfigAndRepository(remoteName);
+        config = validationResult.config;
+        githubRepo = validationResult.githubRepo;
+    } catch (error) {
+        console.log(`❌ Error: ${error.message}`);
+        process.exit(1);
+    }
+
+    await executePRWorkflow({ args, remoteName, config, repository: githubRepo });
 };
 
 main().catch((error) => {
