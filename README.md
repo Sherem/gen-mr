@@ -200,7 +200,8 @@ gen-mr/
 │   ├── gen-mr.mjs          # GitLab merge request CLI
 │   ├── gen-pr.mjs          # GitHub pull request CLI
 │   ├── git-utils.mjs       # Git operations utilities
-│   ├── github-utils.mjs    # GitHub API utilities
+│   ├── repo-providers/
+│   │   └── github-provider.mjs # GitHub API provider (replaces deprecated github-utils.mjs)
 │   ├── merge-request-generator.mjs # Core MR/PR generation logic
 │   ├── prompt-generator.mjs # AI prompt generation
 │   └── workflow.mjs        # PR workflow orchestration

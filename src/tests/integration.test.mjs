@@ -26,8 +26,6 @@ describe("System Integration Tests", () => {
 
         // github-utils should expose a factory
         expect(typeof githubUtils.createGithubProvider).toBe("function");
-        // Backward compatibility alias
-        expect(typeof githubUtils.createGithubUtils).toBe("function");
     });
 
     test("package.json should have correct test scripts", async () => {

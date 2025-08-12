@@ -117,6 +117,3 @@ export const createGithubProvider = ({ githubToken }) => {
         createOrUpdatePullRequest,
     };
 };
-
-// Backward compatibility named export (to be removed in a future major release)
-export { createGithubProvider as createGithubUtils };
