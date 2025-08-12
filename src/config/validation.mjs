@@ -12,6 +12,68 @@ import {
 } from "../git-provider/git-provider.mjs";
 
 /**
+ * Parse and validate positional CLI arguments according to documented help.
+ * Supported forms:
+ *  - gen-pr <sourceBranch> <targetBranch> [jiraTickets]
+ *  - gen-pr <targetBranch> [jiraTickets]   (uses current branch as source)
+ *
+ * Failure prints usage and exits (mirrors existing CLI behavior).
+ *
+ * @param {object} params
+ * @param {string[]} params.positionalArgs Raw positional args (argv._)
+ * @param {Function} params.showUsage Function to print usage
+ * @returns {Promise<{ sourceBranch: string, targetBranch: string, jiraTickets: string | undefined }>}
+ */
+export const validateArguments = async ({ positionalArgs, showUsage }) => {
+    const count = positionalArgs.length;
+
+    if (count === 0) {
+        console.log("❌ Error: Missing required arguments");
+        console.log(
+            "💡 Provide: <sourceBranch> <targetBranch> or just <targetBranch> to use current branch as source"
+        );
+        showUsage();
+        process.exit(1);
+    }
+
+    let sourceBranch;
+    let targetBranch;
+    let jiraTickets;
+
+    if (count === 1) {
+        // Only target provided; use current branch as source
+        targetBranch = positionalArgs[0];
+        try {
+            sourceBranch = await getCurrentBranch();
+        } catch (error) {
+            console.log(
+                `❌ Error: Unable to determine current branch automatically: ${error.message}`
+            );
+            process.exit(1);
+        }
+        if (!sourceBranch) {
+            console.log(
+                "❌ Error: Could not resolve current branch. Pass both <sourceBranch> <targetBranch> explicitly."
+            );
+            process.exit(1);
+        }
+    } else {
+        // 2 or more args -> first two are source/target
+        sourceBranch = positionalArgs[0];
+        targetBranch = positionalArgs[1];
+        jiraTickets = positionalArgs[2];
+    }
+
+    if (!sourceBranch || !targetBranch) {
+        console.log("❌ Error: Missing required arguments <sourceBranch> <targetBranch>");
+        showUsage();
+        process.exit(1);
+    }
+
+    return { sourceBranch, targetBranch, jiraTickets };
+};
+
+/**
  * Validate configuration and repository setup for PR generation
  * @returns {Promise<object>} Configuration and repository information
  * @throws {Error} If configuration or repository validation fails
@@ -166,41 +228,9 @@ export const validateBranchSyncAndGetRemote = async (localBranch, defaultRemoteN
  *   upstreamRemoteName: string | undefined,
  * }>} Aggregated validated data
  */
-export const validatePRInputAndBranches = async ({ options, args, showUsage }) => {
-    // Named args provided directly; apply fallback behavior:
-    // - If only targetBranch provided (no sourceBranch): use current branch as source
-    // - If neither provided: error
-    let { sourceBranch, targetBranch, jiraTickets } = args;
-    jiraTickets = jiraTickets || "";
-
-    if (!sourceBranch && !targetBranch) {
-        console.log("❌ Error: Missing required arguments");
-        console.log(
-            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
-        );
-        showUsage();
-        process.exit(1);
-    }
-
-    if (!sourceBranch && targetBranch) {
-        try {
-            const current = await getCurrentBranch();
-            sourceBranch = current;
-        } catch (error) {
-            console.error("❌ Failed to detect current branch:", error.message);
-            process.exit(1);
-        }
-    }
-
-    // Final required arguments check
-    if (!sourceBranch || !targetBranch) {
-        console.log("❌ Error: Missing required arguments");
-        console.log(
-            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
-        );
-        showUsage();
-        process.exit(1);
-    }
+export const validatePRInputAndBranches = async ({ options, args /* already validated */ }) => {
+    // Arguments are assumed validated & present (sourceBranch, targetBranch[, jiraTickets])
+    const { sourceBranch, targetBranch, jiraTickets } = args;
 
     // Determine remote name (default to origin if not provided)
     const remoteNameArg = String(options.remote || "").trim();

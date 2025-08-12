@@ -14,6 +14,7 @@ import {
     CHATGPT_MODELS,
 } from "./ai/chatgpt.mjs";
 import { executePRWorkflow } from "./workflow.mjs";
+import { validateArguments } from "./config/validation.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -171,12 +172,8 @@ const main = async () => {
         }
     }
 
-    // Map positional arguments to named args for validation/workflow
-    const args = {
-        sourceBranch: positionalArgs[0],
-        targetBranch: positionalArgs[1],
-        jiraTickets: positionalArgs[2],
-    };
+    // Validate positional args and transform into structured args
+    const args = await validateArguments({ positionalArgs, showUsage });
 
     await executePRWorkflow({ options: argv, args, showUsage });
 };

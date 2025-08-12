@@ -285,7 +285,7 @@ const handleUserInteraction = async (
  * @param {string} githubRepo - GitHub repository name in format "owner/repo"
  * @returns {Promise<void>}
  */
-export const executePRWorkflow = async ({ options, args, showUsage }) => {
+export const executePRWorkflow = async ({ options, args }) => {
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -303,7 +303,7 @@ export const executePRWorkflow = async ({ options, args, showUsage }) => {
             remoteSourceBranch,
             remoteTargetBranch,
             upstreamRemoteName,
-        } = await validatePRInputAndBranches({ options, args, showUsage });
+        } = await validatePRInputAndBranches({ options, args });
 
         const { githubToken } = config;
         const repoProvider = createGithubProvider({ githubToken });
