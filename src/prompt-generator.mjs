@@ -92,7 +92,10 @@ export const generateMergeRequestPrompt = async (
    - Summary of changes
    - Purpose/motivation for the changes
    - Any breaking changes or important notes
-   - List of affected files (mark added and modified files)
+   - List of affected files
+      - List of updated files (if any)
+      - List of added files (if any)
+      - List of deleted files (if any)
    - Testing considerations (if applicable)
 
 Description, should use markdown formatting. 
