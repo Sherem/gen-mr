@@ -82,23 +82,56 @@ export const getChangedFiles = async (sourceBranch, targetBranch) => {
  */
 export const getChangedFilesByType = async (sourceBranch, targetBranch) => {
     try {
-        const [addedRes, modifiedRes, deletedRes] = await Promise.all([
-            execAsync(`git diff --name-only --diff-filter=A ${targetBranch}...${sourceBranch}`),
-            execAsync(`git diff --name-only --diff-filter=M ${targetBranch}...${sourceBranch}`),
-            execAsync(`git diff --name-only --diff-filter=D ${targetBranch}...${sourceBranch}`),
-        ]);
+        // Use a single git diff invocation for efficiency
+        const { stdout } = await execAsync(
+            `git diff --name-status ${targetBranch}...${sourceBranch}`
+        );
 
-        const parse = (stdout) =>
-            stdout
-                .trim()
-                .split("\n")
-                .filter((l) => l.length > 0);
+        const added = [];
+        const modified = [];
+        const deleted = [];
 
-        return {
-            added: parse(addedRes.stdout),
-            modified: parse(modifiedRes.stdout),
-            deleted: parse(deletedRes.stdout),
-        };
+        stdout
+            .trim()
+            .split("\n")
+            .filter((line) => line.length > 0)
+            .forEach((line) => {
+                // name-status format examples:
+                // A	path/file.js
+                // M	path/file.js
+                // D	path/file.js
+                // R100	old/path/file.js	new/path/file.js
+                // C75	orig/file.js	copy/file.js
+                const parts = line.split(/\t+/);
+                if (parts.length === 0) return;
+                const status = parts[0];
+                const statusType = status[0]; // First letter denotes primary change type
+
+                // Determine the filename to record (for renames/copies take the last path)
+                const filePath = parts[parts.length - 1];
+
+                switch (statusType) {
+                    case "A":
+                        added.push(filePath);
+                        break;
+                    case "M":
+                        modified.push(filePath);
+                        break;
+                    case "D":
+                        deleted.push(filePath);
+                        break;
+                    case "R":
+                    case "C":
+                        // Treat renames and copies as modifications (use new path)
+                        modified.push(filePath);
+                        break;
+                    default:
+                        // Ignore other status types for now
+                        break;
+                }
+            });
+
+        return { added, modified, deleted };
     } catch (error) {
         throw new Error(`Failed to get changed files by type: ${error.message}`);
     }
