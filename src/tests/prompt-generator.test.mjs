@@ -6,8 +6,8 @@ import {
     generateComprehensivePrompt,
 } from "../prompt-generator.mjs";
 
-// Mock git-utils module
-jest.mock("../git-utils.mjs", () => ({
+// Mock git-provider module
+jest.mock("../git-provider/git-provider.mjs", () => ({
     getGitDiff: jest.fn(),
     getCommitMessages: jest.fn(),
     getChangedFiles: jest.fn(),
@@ -19,7 +19,7 @@ import {
     getCommitMessages,
     getChangedFiles,
     getChangedFilesByType,
-} from "../git-utils.mjs";
+} from "../git-provider/git-provider.mjs";
 
 describe("prompt-generator", () => {
     beforeEach(() => {

@@ -8,7 +8,7 @@ import {
     fetchRemote,
     getAheadBehind,
     getCommitSha,
-} from "../git-utils.mjs";
+} from "../git-provider/git-provider.mjs";
 
 /**
  * Validate configuration and repository setup for PR generation

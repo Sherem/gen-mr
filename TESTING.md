@@ -4,13 +4,14 @@ This project uses Jest for testing with support for ES modules (.mjs files).
 
 ## Test Structure
 
-Tests are located in the `src/tests/` directory with the following structure:
+Tests are primarily located in the `src/tests/` directory, with provider-specific tests colocated (e.g., `src/git-provider/tests`). Updated structure:
 
 ```
 src/tests/
-├── git-utils.test.mjs          # Tests for git operations
-├── prompt-generator.test.mjs   # Tests for AI prompt generation
-└── integration.test.mjs        # Integration tests
+├── prompt-generator.test.mjs        # Tests for AI prompt generation
+└── integration.test.mjs             # Integration tests
+src/git-provider/tests/
+└── git-provider.test.mjs            # Tests for git operations
 ```
 
 ## Running Tests
@@ -42,7 +43,7 @@ npm run test:coverage
 
 ### Unit Tests
 
-- `git-utils.test.mjs`: Tests utility functions for Git operations like `parseRepoFromRemote` and `detectRepoType`
+- `git-provider.test.mjs`: Tests utility functions for Git operations like `parseRepoFromRemote` and `detectRepoType` (now in `src/git-provider/tests/`)
 - `prompt-generator.test.mjs`: Tests AI prompt generation functions with mocked dependencies
 
 ### Integration Tests
@@ -70,7 +71,7 @@ describe("Module Name", () => {
 For functions that make external calls (like git commands), use Jest mocks:
 
 ```javascript
-jest.mock("../git-utils.mjs", () => ({
+jest.mock("../git-provider/git-provider.mjs", () => ({
     getGitDiff: jest.fn(),
     getCommitMessages: jest.fn(),
 }));
