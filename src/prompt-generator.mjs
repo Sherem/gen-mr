@@ -9,6 +9,33 @@ import {
 } from "./git-utils.mjs";
 
 /**
+ * Build the changed files section string listing Modified / Added / Deleted groups.
+ * Always prefixes with two leading newlines and the header 'Changed files:'.
+ * Returns a string starting with a newline so it can be concatenated directly.
+ * @param {string[]} added
+ * @param {string[]} modified
+ * @param {string[]} deleted
+ * @returns {string}
+ */
+const buildChangedFilesSection = (added, modified, deleted) => {
+    const section = [];
+    section.push("\n\nChanged files:");
+    if (modified && modified.length) {
+        section.push("Modified:");
+        section.push(...modified.map((f) => `- ${f}`));
+    }
+    if (added && added.length) {
+        section.push("Added:");
+        section.push(...added.map((f) => `- ${f}`));
+    }
+    if (deleted && deleted.length) {
+        section.push("Deleted:");
+        section.push(...deleted.map((f) => `- ${f}`));
+    }
+    return `\n${section.join("\n")}`;
+};
+
+/**
  * Generate a comprehensive prompt for AI to create merge request title and description
  * @param {string} sourceBranch - Source branch name
  * @param {string} targetBranch - Target branch name
@@ -52,67 +79,69 @@ export const generateMergeRequestPrompt = async (
     }
 
     try {
-        // Add commit messages context
+        // Prepare fixed-position promise slots (null if feature disabled)
+        const commitsPromise = includeCommitMessages
+            ? getCommitMessages(sourceBranch, targetBranch)
+            : null;
+        const filesByTypePromise = includeChangedFiles
+            ? getChangedFilesByType(sourceBranch, targetBranch)
+            : null;
+        const diffPromise = includeGitDiff ? getGitDiff(sourceBranch, targetBranch) : null;
+
+        let commits = null;
+        let filesByType = null;
+        let diff = null;
+        try {
+            [commits, filesByType, diff] = await Promise.all([
+                commitsPromise,
+                filesByTypePromise,
+                diffPromise,
+            ]);
+        } catch (gitErr) {
+            // Normalize any git command failure to a common error message
+            throw new Error(`one or more git commands failed: ${gitErr.message}`);
+        }
+
+        // Commit messages section (preserve ordering in output regardless of fetch order)
         if (includeCommitMessages) {
-            const commits = await getCommitMessages(sourceBranch, targetBranch);
-            if (commits.length > 0) {
+            if (Array.isArray(commits) && commits.length > 0) {
                 prompt += `\n\nCommit messages:\n${commits.map((msg) => `- ${msg}`).join("\n")}`;
-            } else {
+            } else if (Array.isArray(commits)) {
                 prompt += `\n\nCommit messages: No commit messages found.`;
-            }
+            } // if commits null (error), silently skip as before (covered by catch warning)
         }
 
-        // Add changed files context
+        // Changed files section
         if (includeChangedFiles) {
-            // Use detailed classification while preserving legacy flat list for backward compatibility
-            const filesByType = await getChangedFilesByType(sourceBranch, targetBranch).catch(
-                () => null
-            );
+            let added = [];
+            let modified = [];
+            let deleted = [];
             if (filesByType) {
-                const { added, modified, deleted } = filesByType;
-                const total = added.length + modified.length + deleted.length;
-                if (total > 0) {
-                    const section = [];
-                    section.push("\n\nChanged files:");
-                    if (modified.length) {
-                        section.push("Modified:");
-                        section.push(...modified.map((f) => `- ${f}`));
-                    }
-                    if (added.length) {
-                        section.push("Added:");
-                        section.push(...added.map((f) => `- ${f}`));
-                    }
-                    if (deleted.length) {
-                        section.push("Deleted:");
-                        section.push(...deleted.map((f) => `- ${f}`));
-                    }
-                    prompt += `\n${section.join("\n")}`;
-                } else {
-                    prompt += `\n\nChanged files: No changed files found.`;
-                }
+                ({ added, modified, deleted } = filesByType);
             } else {
-                // Fallback to previous behavior if classification fails
-                const files = await getChangedFiles(sourceBranch, targetBranch);
-                if (files.length > 0) {
-                    prompt += `\n\nChanged files:\n${files.map((file) => `- ${file}`).join("\n")}`;
-                } else {
-                    prompt += `\n\nChanged files: No changed files found.`;
-                }
+                // Fallback to flat list fetch only if classification failed
+                const flat = await getChangedFiles(sourceBranch, targetBranch).catch(() => []);
+                modified = flat; // treat all as modified if we lack type info
             }
+
+            const total = (added?.length || 0) + (modified?.length || 0) + (deleted?.length || 0);
+            prompt +=
+                total > 0
+                    ? buildChangedFilesSection(added, modified, deleted)
+                    : `\n\nChanged files: No changed files found.`;
         }
 
-        // Add git diff context (truncated for AI token limits)
+        // Diff section
         if (includeGitDiff) {
-            const diff = await getGitDiff(sourceBranch, targetBranch);
-            if (diff) {
+            if (typeof diff === "string" && diff.length > 0) {
                 const diffLines = diff.split("\n").slice(0, maxDiffLines);
                 const truncatedDiff = diffLines.join("\n");
                 prompt += `\n\nCode changes (showing first ${maxDiffLines} lines):\n\`\`\`diff\n${truncatedDiff}\n\`\`\``;
-
                 if (diff.split("\n").length > maxDiffLines) {
                     prompt += "\n... (diff truncated for brevity)";
                 }
-            } else {
+            } else if (diff !== null) {
+                // diff empty string
                 prompt += "\n\nCode changes: No code changes found.";
             }
         }

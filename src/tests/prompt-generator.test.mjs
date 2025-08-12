@@ -72,13 +72,27 @@ describe("prompt-generator", () => {
             expect(result).toContain("- Fix bug in component");
         });
 
+        test("should omit commit section when commits is null", async () => {
+            // Simulate git util returning null (not an array) without throwing
+            getCommitMessages.mockResolvedValue(null);
+            getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+
+            expect(getCommitMessages).toHaveBeenCalled();
+            expect(result).not.toContain("Commit messages:");
+            expect(result).not.toContain("Commit messages: No commit messages found.");
+        });
+
         test("should include changed files when available", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue(["src/component.js", "src/utils.js"]); // fallback
             getChangedFilesByType.mockResolvedValue({
                 added: ["src/component.js"],
                 modified: ["src/utils.js"],
-                deleted: [],
+                deleted: ["src/old-file.js"],
             });
             getGitDiff.mockResolvedValue("");
 
@@ -103,6 +117,18 @@ describe("prompt-generator", () => {
             expect(result).toContain("```diff");
             expect(result).toContain("+ added line");
             expect(result).toContain("- removed line");
+        });
+
+        test("should omit diff section when diff is null", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
+            getGitDiff.mockResolvedValue(null); // explicit null
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+
+            expect(result).not.toContain("Code changes");
+            expect(result).not.toContain("```diff");
         });
 
         test("should include additional instructions when provided", async () => {
@@ -272,6 +298,49 @@ describe("prompt-generator", () => {
             const result = await generateComprehensivePrompt("feature-branch", "main");
 
             expect(result).toContain("showing first 2000 lines");
+        });
+
+        test("should fallback to flat changed files list when classification unavailable (non-empty)", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue(null); // triggers fallback branch
+            getChangedFiles.mockResolvedValue(["src/a.js", "src/b.js"]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+            expect(result).toContain("Changed files:");
+            expect(result).toContain("- src/a.js");
+            expect(result).toContain("- src/b.js");
+        });
+
+        test("should fallback and show no changed files when classification unavailable and flat list empty", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue(null); // triggers fallback branch
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+            expect(result).toContain("Changed files: No changed files found.");
+        });
+
+        test("should show 'No code changes found' when diff is empty string", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue(""); // empty diff triggers else-if path
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+            expect(result).toContain("Code changes: No code changes found.");
+        });
+
+        test("should apply default empty arrays when filesByType missing keys", async () => {
+            getCommitMessages.mockResolvedValue([]);
+            // Provide object missing arrays to hit destructuring defaults
+            getChangedFilesByType.mockResolvedValue({});
+            getChangedFiles.mockResolvedValue([]);
+            getGitDiff.mockResolvedValue("+ line1");
+
+            const result = await generateMergeRequestPrompt("feature-branch", "main");
+            expect(result).toContain("Changed files: No changed files found.");
         });
     });
 });
