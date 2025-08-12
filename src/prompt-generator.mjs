@@ -1,7 +1,12 @@
 // prompt-generator.mjs
 // Handles AI prompt generation for merge requests
 
-import { getGitDiff, getCommitMessages, getChangedFiles } from "./git-utils.mjs";
+import {
+    getGitDiff,
+    getCommitMessages,
+    getChangedFiles,
+    getChangedFilesByType,
+} from "./git-utils.mjs";
 
 /**
  * Generate a comprehensive prompt for AI to create merge request title and description
@@ -59,11 +64,40 @@ export const generateMergeRequestPrompt = async (
 
         // Add changed files context
         if (includeChangedFiles) {
-            const files = await getChangedFiles(sourceBranch, targetBranch);
-            if (files.length > 0) {
-                prompt += `\n\nChanged files:\n${files.map((file) => `- ${file}`).join("\n")}`;
+            // Use detailed classification while preserving legacy flat list for backward compatibility
+            const filesByType = await getChangedFilesByType(sourceBranch, targetBranch).catch(
+                () => null
+            );
+            if (filesByType) {
+                const { added, modified, deleted } = filesByType;
+                const total = added.length + modified.length + deleted.length;
+                if (total > 0) {
+                    const section = [];
+                    section.push("\n\nChanged files:");
+                    if (modified.length) {
+                        section.push("Modified:");
+                        section.push(...modified.map((f) => `- ${f}`));
+                    }
+                    if (added.length) {
+                        section.push("Added:");
+                        section.push(...added.map((f) => `- ${f}`));
+                    }
+                    if (deleted.length) {
+                        section.push("Deleted:");
+                        section.push(...deleted.map((f) => `- ${f}`));
+                    }
+                    prompt += `\n${section.join("\n")}`;
+                } else {
+                    prompt += `\n\nChanged files: No changed files found.`;
+                }
             } else {
-                prompt += `\n\nChanged files: No changed files found.`;
+                // Fallback to previous behavior if classification fails
+                const files = await getChangedFiles(sourceBranch, targetBranch);
+                if (files.length > 0) {
+                    prompt += `\n\nChanged files:\n${files.map((file) => `- ${file}`).join("\n")}`;
+                } else {
+                    prompt += `\n\nChanged files: No changed files found.`;
+                }
             }
         }
 

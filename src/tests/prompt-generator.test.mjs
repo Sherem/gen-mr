@@ -11,9 +11,15 @@ jest.mock("../git-utils.mjs", () => ({
     getGitDiff: jest.fn(),
     getCommitMessages: jest.fn(),
     getChangedFiles: jest.fn(),
+    getChangedFilesByType: jest.fn(),
 }));
 
-import { getGitDiff, getCommitMessages, getChangedFiles } from "../git-utils.mjs";
+import {
+    getGitDiff,
+    getCommitMessages,
+    getChangedFiles,
+    getChangedFilesByType,
+} from "../git-utils.mjs";
 
 describe("prompt-generator", () => {
     beforeEach(() => {
@@ -25,6 +31,7 @@ describe("prompt-generator", () => {
             // Mock git functions to return empty results
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("");
 
             const result = await generateMergeRequestPrompt("feature-branch", "main");
@@ -40,6 +47,7 @@ describe("prompt-generator", () => {
         test("should include JIRA tickets when provided", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("");
 
             const result = await generateMergeRequestPrompt(
@@ -54,6 +62,7 @@ describe("prompt-generator", () => {
         test("should include commit messages when available", async () => {
             getCommitMessages.mockResolvedValue(["Add new feature", "Fix bug in component"]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("");
 
             const result = await generateMergeRequestPrompt("feature-branch", "main");
@@ -65,12 +74,19 @@ describe("prompt-generator", () => {
 
         test("should include changed files when available", async () => {
             getCommitMessages.mockResolvedValue([]);
-            getChangedFiles.mockResolvedValue(["src/component.js", "src/utils.js"]);
+            getChangedFiles.mockResolvedValue(["src/component.js", "src/utils.js"]); // fallback
+            getChangedFilesByType.mockResolvedValue({
+                added: ["src/component.js"],
+                modified: ["src/utils.js"],
+                deleted: [],
+            });
             getGitDiff.mockResolvedValue("");
 
             const result = await generateMergeRequestPrompt("feature-branch", "main");
 
             expect(result).toContain("Changed files:");
+            expect(result).toContain("Added:");
+            expect(result).toContain("Modified:");
             expect(result).toContain("- src/component.js");
             expect(result).toContain("- src/utils.js");
         });
@@ -78,6 +94,7 @@ describe("prompt-generator", () => {
         test("should include git diff when available", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("+ added line\n- removed line");
 
             const result = await generateMergeRequestPrompt("feature-branch", "main");
@@ -91,6 +108,7 @@ describe("prompt-generator", () => {
         test("should include additional instructions when provided", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("");
 
             const result = await generateMergeRequestPrompt("feature-branch", "main", "", {
@@ -104,6 +122,7 @@ describe("prompt-generator", () => {
         test("should not include commit messages when disabled", async () => {
             getCommitMessages.mockResolvedValue(["This should not appear"]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("");
 
             const result = await generateMergeRequestPrompt("feature-branch", "main", "", {
@@ -119,6 +138,7 @@ describe("prompt-generator", () => {
         test("should not include changed files when disabled", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue(["a.js"]);
+            getChangedFilesByType.mockResolvedValue({ added: ["a.js"], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("");
 
             const result = await generateMergeRequestPrompt("feature-branch", "main", "", {
@@ -128,12 +148,13 @@ describe("prompt-generator", () => {
             });
 
             expect(result).not.toContain("Changed files:");
-            expect(getChangedFiles).not.toHaveBeenCalled();
+            expect(getChangedFilesByType).not.toHaveBeenCalled();
         });
 
         test("should not include JIRA tickets when empty", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("");
 
             const result = await generateMergeRequestPrompt("feature-branch", "main", "");
@@ -162,6 +183,7 @@ describe("prompt-generator", () => {
         test("should handle git errors gracefully", async () => {
             getCommitMessages.mockRejectedValue(new Error("Git error"));
             getChangedFiles.mockRejectedValue(new Error("Git error"));
+            getChangedFilesByType.mockRejectedValue(new Error("Git error"));
             getGitDiff.mockRejectedValue(new Error("Git error"));
 
             const consoleSpy = jest.spyOn(console, "warn").mockImplementation(() => {
@@ -181,6 +203,7 @@ describe("prompt-generator", () => {
         test("should respect maxDiffLines option", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("line1\nline2\nline3\nline4\nline5");
 
             const result = await generateMergeRequestPrompt("feature-branch", "main", "", {
@@ -196,6 +219,7 @@ describe("prompt-generator", () => {
         test("should call generateMergeRequestPrompt with default options", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("");
 
             const result = await generateDefaultPrompt("feature-branch", "main", "PROJ-123");
@@ -207,6 +231,7 @@ describe("prompt-generator", () => {
         test("should not include JIRA tickets when empty or omitted", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("");
 
             // Omit third arg entirely
@@ -221,6 +246,11 @@ describe("prompt-generator", () => {
         test("should generate prompt without git diff", async () => {
             getCommitMessages.mockResolvedValue(["Test commit"]);
             getChangedFiles.mockResolvedValue(["file.js"]);
+            getChangedFilesByType.mockResolvedValue({
+                added: ["file.js"],
+                modified: [],
+                deleted: [],
+            });
             getGitDiff.mockResolvedValue("some diff");
 
             const result = await generateMinimalPrompt("feature-branch", "main");
@@ -236,6 +266,7 @@ describe("prompt-generator", () => {
         test("should generate prompt with extended diff", async () => {
             getCommitMessages.mockResolvedValue([]);
             getChangedFiles.mockResolvedValue([]);
+            getChangedFilesByType.mockResolvedValue({ added: [], modified: [], deleted: [] });
             getGitDiff.mockResolvedValue("comprehensive diff content");
 
             const result = await generateComprehensivePrompt("feature-branch", "main");
