@@ -256,15 +256,14 @@ const handleUserInteraction = async (
                     // Cancel option when no changes
                     console.log("❌ Operation cancelled. Exiting without saving.");
                     rl.close();
-                    process.exit(0);
+                    return; // cancel without saving
                 }
                 break;
             case "5":
                 if (hasChanges) {
-                    // Cancel option when there are changes
                     console.log("❌ Operation cancelled. Exiting without saving.");
                     rl.close();
-                    process.exit(0);
+                    return; // cancel with changes
                 } else {
                     console.log(`❌ Invalid option. Please choose 1-4.`);
                 }

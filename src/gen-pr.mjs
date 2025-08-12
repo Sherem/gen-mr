@@ -88,17 +88,16 @@ const main = async () => {
     // Handle help
     if (argv.help) {
         showUsage();
-        process.exit(0);
+        return; // success path
     }
 
     // Handle token configuration
     if (argv["create-token"]) {
         try {
             await configureGithubToken(argv.global || argv.g);
-            process.exit(0);
+            return; // success
         } catch (error) {
-            console.error("❌ Token configuration failed:", error.message);
-            process.exit(1);
+            throw new Error(`Token configuration failed: ${error.message}`);
         }
     }
 
@@ -106,10 +105,9 @@ const main = async () => {
     if (argv["configure-editor"]) {
         try {
             await configureEditor(argv.global || argv.g);
-            process.exit(0);
+            return; // success
         } catch (error) {
-            console.error("❌ Editor configuration failed:", error.message);
-            process.exit(1);
+            throw new Error(`Editor configuration failed: ${error.message}`);
         }
     }
 
@@ -125,24 +123,21 @@ const main = async () => {
         const chatgptAliases = new Set(["chatgpt", "openai", "gpt", "gpt-3.5", "gpt-4", "gpt-4o"]);
 
         if (!llm) {
-            console.error("❌ Missing LLM argument. Example: gen-pr --create-ai-token ChatGPT");
-            process.exit(1);
+            throw new Error("Missing LLM argument. Example: gen-pr --create-ai-token ChatGPT");
         }
 
         try {
             if (chatgptAliases.has(llm)) {
                 await configureChatGPTToken(isGlobal);
             } else {
-                console.error(
-                    `❌ Unsupported LLM '${llmRaw}'. Only ChatGPT is implemented at the moment.`
-                );
                 console.log("ℹ️  Try: gen-pr --create-ai-token ChatGPT");
-                process.exit(1);
+                throw new Error(
+                    `Unsupported LLM '${llmRaw}'. Only ChatGPT is implemented at the moment.`
+                );
             }
-            process.exit(0);
+            return; // success
         } catch (error) {
-            console.error("❌ AI token configuration failed:", error.message);
-            process.exit(1);
+            throw new Error(`AI token configuration failed: ${error.message}`);
         }
     }
 
@@ -152,11 +147,10 @@ const main = async () => {
         const isGlobal = argv.global || argv.g;
         try {
             await setChatGPTModel(String(modelRaw), isGlobal);
-            process.exit(0);
+            return; // success
         } catch (error) {
-            console.error("❌ Failed to set model:", error.message);
             console.log("ℹ️  Supported models:", CHATGPT_MODELS.join(", "));
-            process.exit(1);
+            throw new Error(`Failed to set model: ${error.message}`);
         }
     }
 
@@ -165,10 +159,9 @@ const main = async () => {
         const isGlobal = argv.global || argv.g;
         try {
             await showCurrentConfig(isGlobal);
-            process.exit(0);
+            return; // success
         } catch (error) {
-            console.error("❌ Failed to show configuration:", error.message);
-            process.exit(1);
+            throw new Error(`Failed to show configuration: ${error.message}`);
         }
     }
 
@@ -187,8 +180,7 @@ const main = async () => {
         config = validationResult.config;
         githubRepo = validationResult.githubRepo;
     } catch (error) {
-        console.log(`❌ Error: ${error.message}`);
-        process.exit(1);
+        throw new Error(error.message);
     }
 
     await executePRWorkflow({ args, remoteName, config, repository: githubRepo });
