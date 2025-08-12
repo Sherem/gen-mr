@@ -89,7 +89,7 @@ const regenerateMergeRequest = async (
  * @param {string} jiraTickets - JIRA ticket IDs
  * @param {object} initialResult - Initial MR generation result
  * @param {object} prConfig - PR configuration (repo, token, etc.)
- * @param {object} githubUtils - Instance of GitHub utils created via factory
+ * @param {object} repoProvider - Repository provider (GitHub implementation)
  * @returns {Promise<void>}
  */
 const handleUserInteraction = async (
@@ -218,7 +218,7 @@ const handleUserInteraction = async (
 
     const saveMergeRequest = async () => {
         try {
-            await prConfig.githubUtils.createOrUpdatePullRequest({
+            await prConfig.repoProvider.createOrUpdatePullRequest({
                 githubRepo: prConfig.githubRepo,
                 // Use tracked remote branch for GitHub API operations
                 sourceBranch: prConfig.remoteSourceBranch || sourceBranch,
@@ -292,7 +292,7 @@ export const executePRWorkflow = async (
     remoteSourceBranch,
     remoteTargetBranch,
     remoteName,
-    githubUtils
+    repoProvider
 ) => {
     const rl = readline.createInterface({
         input: process.stdin,
@@ -310,7 +310,7 @@ export const executePRWorkflow = async (
 
         // Check if a pull request already exists for these branches
         console.log("🔍 Checking for existing pull requests...");
-        const existingPR = await githubUtils.findExistingPullRequest(
+        const existingPR = await repoProvider.findExistingPullRequest(
             githubRepo,
             remoteSourceBranch || sourceBranch,
             remoteTargetBranch || targetBranch
@@ -427,7 +427,7 @@ export const executePRWorkflow = async (
             existingPR,
             remoteSourceBranch,
             remoteTargetBranch,
-            githubUtils,
+            repoProvider,
         });
     } catch (error) {
         console.error("❌ Workflow error:", error.message);

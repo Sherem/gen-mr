@@ -1,7 +1,18 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 
 // Module under test
-import { createGithubUtils } from "../github-utils.mjs";
+import { createGithubProvider } from "../github-provider.mjs";
+
+describe("github-provider validation", () => {
+    test("throws when missing githubToken", () => {
+        expect(() => createGithubProvider({ githubToken: "" })).toThrow(
+            "Missing required githubToken for GitHub utils"
+        );
+        expect(() => createGithubProvider({})).toThrow(
+            "Missing required githubToken for GitHub utils"
+        );
+    });
+});
 
 // Ensure we can mock fetch in Node test environment
 beforeEach(() => {
@@ -27,9 +38,9 @@ const mockFetchError = (message = "boom", status = 400) => {
     });
 };
 
-describe("github-utils HTTP helpers", () => {
+describe("github-provider HTTP helpers", () => {
     const token = "TOKEN123";
-    const gh = createGithubUtils({ githubToken: token });
+    const gh = createGithubProvider({ githubToken: token });
     test("postToGithub sends POST with headers and body, returns JSON", async () => {
         const payload = { a: 1 };
         const response = { id: 123, ok: true };
@@ -94,12 +105,12 @@ describe("github-utils HTTP helpers", () => {
     });
 });
 
-describe("github-utils findExistingPullRequest", () => {
+describe("github-provider findExistingPullRequest", () => {
     const repo = "owner/repo";
     const head = "feature-123";
     const base = "main";
     const token = "TTT";
-    const gh = createGithubUtils({ githubToken: token });
+    const gh = createGithubProvider({ githubToken: token });
 
     test("returns first PR when list is non-empty", async () => {
         const prs = [{ number: 10, html_url: "u" }, { number: 11 }];
@@ -122,7 +133,9 @@ describe("github-utils findExistingPullRequest", () => {
 
     test("returns null and warns when request fails", async () => {
         mockFetchError("api down", 500);
-        const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+        const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {
+            return;
+        });
         const pr = await gh.findExistingPullRequest(repo, head, base);
         expect(pr).toBeNull();
         expect(warnSpy).toHaveBeenCalledWith(
@@ -133,7 +146,7 @@ describe("github-utils findExistingPullRequest", () => {
     });
 });
 
-describe("github-utils createOrUpdatePullRequest", () => {
+describe("github-provider createOrUpdatePullRequest", () => {
     const baseOpts = {
         githubRepo: "owner/repo",
         sourceBranch: "feature",
@@ -142,12 +155,14 @@ describe("github-utils createOrUpdatePullRequest", () => {
         description: "Body here",
     };
     const token = "TOK";
-    const gh = createGithubUtils({ githubToken: token });
+    const gh = createGithubProvider({ githubToken: token });
 
     test("creates a new PR when existingPR not provided", async () => {
         const resp = { number: 5, html_url: "https://gh/pr/5" };
         mockFetchOk(resp);
-        const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+        const logSpy = jest.spyOn(console, "log").mockImplementation(() => {
+            return;
+        });
         const out = await gh.createOrUpdatePullRequest({ ...baseOpts, existingPR: null });
         expect(out).toEqual(resp);
         expect(logSpy).toHaveBeenCalledWith("✅ Pull request created:", resp.html_url);
@@ -167,7 +182,9 @@ describe("github-utils createOrUpdatePullRequest", () => {
     test("updates an existing PR when existingPR provided", async () => {
         const resp = { number: 7, html_url: "https://gh/pr/7" };
         mockFetchOk(resp);
-        const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+        const logSpy = jest.spyOn(console, "log").mockImplementation(() => {
+            return;
+        });
         const out = await gh.createOrUpdatePullRequest({ ...baseOpts, existingPR: { number: 7 } });
         expect(out).toEqual(resp);
         expect(logSpy).toHaveBeenCalledWith("✅ Pull request updated:", resp.html_url);
@@ -182,7 +199,9 @@ describe("github-utils createOrUpdatePullRequest", () => {
     test("logs error and rethrows when create fails", async () => {
         const errMsg = "create failed";
         mockFetchError(errMsg, 400);
-        const errSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+        const errSpy = jest.spyOn(console, "error").mockImplementation(() => {
+            return;
+        });
         await expect(
             gh.createOrUpdatePullRequest({ ...baseOpts, existingPR: null })
         ).rejects.toThrow(errMsg);
@@ -193,7 +212,9 @@ describe("github-utils createOrUpdatePullRequest", () => {
     test("logs error and rethrows when update fails", async () => {
         const errMsg = "update failed";
         mockFetchError(errMsg, 400);
-        const errSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+        const errSpy = jest.spyOn(console, "error").mockImplementation(() => {
+            return;
+        });
         await expect(
             gh.createOrUpdatePullRequest({ ...baseOpts, existingPR: { number: 42 } })
         ).rejects.toThrow(errMsg);
