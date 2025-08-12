@@ -3,6 +3,8 @@
 
 import readline from "readline";
 import { getEditorCommand, editPullRequestContent, openInEditor } from "./config/common.mjs";
+import { validatePRInputAndBranches } from "./config/validation.mjs";
+import { createGithubProvider } from "./repo-providers/github-provider.mjs";
 import {
     generateMergeRequestSafe,
     getDefaultPromptOptions,
@@ -219,7 +221,7 @@ const handleUserInteraction = async (
     const saveMergeRequest = async () => {
         try {
             await prConfig.repoProvider.createOrUpdatePullRequest({
-                githubRepo: prConfig.githubRepo,
+                githubRepo: prConfig.repository,
                 // Use tracked remote branch for GitHub API operations
                 sourceBranch: prConfig.remoteSourceBranch || sourceBranch,
                 targetBranch: prConfig.remoteTargetBranch || targetBranch,
@@ -280,27 +282,28 @@ const handleUserInteraction = async (
  * @param {string} targetBranch - Target branch to merge into
  * @param {string} jiraTickets - Comma-separated JIRA ticket IDs (optional)
  * @param {object} config - Configuration object containing tokens
- * @param {string} githubRepo - GitHub repository name in format "owner/repo"
+ * @param {string} repository - Remote repository name in format "owner/repo"
  * @returns {Promise<void>}
  */
-export const executePRWorkflow = async (
-    sourceBranch,
-    targetBranch,
-    jiraTickets = "",
-    config,
-    githubRepo,
-    remoteSourceBranch,
-    remoteTargetBranch,
-    remoteName,
-    repoProvider
-) => {
+export const executePRWorkflow = async ({ args, remoteName, config, repository }) => {
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
     });
 
     try {
+        // Perform full validation (args, config, branches)
+        const {
+            sourceBranch,
+            targetBranch,
+            jiraTickets,
+            remoteSourceBranch,
+            remoteTargetBranch,
+            upstreamRemoteName,
+        } = await validatePRInputAndBranches({ args, remoteName });
+
         const { githubToken } = config;
+        const repoProvider = createGithubProvider({ githubToken });
 
         const promptOptions = getDefaultPromptOptions({
             includeGitDiff: true,
@@ -311,7 +314,7 @@ export const executePRWorkflow = async (
         // Check if a pull request already exists for these branches
         console.log("🔍 Checking for existing pull requests...");
         const existingPR = await repoProvider.findExistingPullRequest(
-            githubRepo,
+            repository,
             remoteSourceBranch || sourceBranch,
             remoteTargetBranch || targetBranch
         );
@@ -358,7 +361,7 @@ export const executePRWorkflow = async (
                             verbose: true,
                             remoteSourceBranch,
                             remoteTargetBranch,
-                            remoteName,
+                            remoteName: upstreamRemoteName || remoteName,
                         }
                     );
                     break;
@@ -406,7 +409,7 @@ export const executePRWorkflow = async (
                     verbose: true,
                     remoteSourceBranch,
                     remoteTargetBranch,
-                    remoteName,
+                    remoteName: upstreamRemoteName || remoteName,
                 }
             );
         }
@@ -422,7 +425,7 @@ export const executePRWorkflow = async (
 
         // Handle user interaction with menu system
         await handleUserInteraction(rl, config, sourceBranch, targetBranch, jiraTickets, result, {
-            githubRepo,
+            repository,
             githubToken,
             existingPR,
             remoteSourceBranch,
