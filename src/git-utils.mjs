@@ -75,6 +75,36 @@ export const getChangedFiles = async (sourceBranch, targetBranch) => {
 };
 
 /**
+ * Get changed files separated by type (added, modified, deleted)
+ * @param {string} sourceBranch - Source branch name
+ * @param {string} targetBranch - Target branch name
+ * @returns {Promise<{added:string[], modified:string[], deleted:string[]}>}
+ */
+export const getChangedFilesByType = async (sourceBranch, targetBranch) => {
+    try {
+        const [addedRes, modifiedRes, deletedRes] = await Promise.all([
+            execAsync(`git diff --name-only --diff-filter=A ${targetBranch}...${sourceBranch}`),
+            execAsync(`git diff --name-only --diff-filter=M ${targetBranch}...${sourceBranch}`),
+            execAsync(`git diff --name-only --diff-filter=D ${targetBranch}...${sourceBranch}`),
+        ]);
+
+        const parse = (stdout) =>
+            stdout
+                .trim()
+                .split("\n")
+                .filter((l) => l.length > 0);
+
+        return {
+            added: parse(addedRes.stdout),
+            modified: parse(modifiedRes.stdout),
+            deleted: parse(deletedRes.stdout),
+        };
+    } catch (error) {
+        throw new Error(`Failed to get changed files by type: ${error.message}`);
+    }
+};
+
+/**
  * Get current git repository information
  * @returns {Promise<object>} Repository info with remote URL and name
  */
