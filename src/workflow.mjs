@@ -290,12 +290,13 @@ export const executePRWorkflow = async ({ args, remoteName, config, repository }
         output: process.stdout,
     });
 
+    const { jiraTickets } = args;
+
     try {
         // Perform full validation (args, config, branches)
         const {
             sourceBranch,
             targetBranch,
-            jiraTickets,
             remoteSourceBranch,
             remoteTargetBranch,
             upstreamRemoteName,
