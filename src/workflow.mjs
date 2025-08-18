@@ -256,15 +256,14 @@ const handleUserInteraction = async (
                     // Cancel option when no changes
                     console.log("❌ Operation cancelled. Exiting without saving.");
                     rl.close();
-                    process.exit(0);
+                    return; // cancel without saving
                 }
                 break;
             case "5":
                 if (hasChanges) {
-                    // Cancel option when there are changes
                     console.log("❌ Operation cancelled. Exiting without saving.");
                     rl.close();
-                    process.exit(0);
+                    return; // cancel with changes
                 } else {
                     console.log(`❌ Invalid option. Please choose 1-4.`);
                 }
@@ -391,7 +390,7 @@ export const executePRWorkflow = async ({ args, remoteName, config, repository }
                 default:
                     console.log("❌ Operation cancelled. Existing PR will remain unchanged.");
                     rl.close();
-                    process.exit(0);
+                    return { cancelled: true, reason: "user_cancelled" };
             }
         } else {
             // Generate merge request using the new modular approach
@@ -435,6 +434,6 @@ export const executePRWorkflow = async ({ args, remoteName, config, repository }
     } catch (error) {
         console.error("❌ Workflow error:", error.message);
         rl.close();
-        process.exit(1);
+        throw error; // propagate to caller so outer CLI can decide how to handle
     }
 };

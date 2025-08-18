@@ -90,7 +90,7 @@ const main = async () => {
     // Handle help
     if (argv.help) {
         showUsage();
-        process.exit(0);
+        return; // success
     }
 
     // Handle AI token configuration
@@ -104,24 +104,21 @@ const main = async () => {
         const chatgptAliases = new Set(["chatgpt", "openai", "gpt", "gpt-3.5", "gpt-4", "gpt-4o"]);
 
         if (!llm) {
-            console.error("❌ Missing LLM argument. Example: gen-mr --create-ai-token ChatGPT");
-            process.exit(1);
+            throw new Error("Missing LLM argument. Example: gen-mr --create-ai-token ChatGPT");
         }
 
         try {
             if (chatgptAliases.has(llm)) {
                 await configureChatGPTToken(isGlobal);
             } else {
-                console.error(
-                    `❌ Unsupported LLM '${llmRaw}'. Only ChatGPT is implemented at the moment.`
-                );
                 console.log("ℹ️  Try: gen-mr --create-ai-token ChatGPT");
-                process.exit(1);
+                throw new Error(
+                    `Unsupported LLM '${llmRaw}'. Only ChatGPT is implemented at the moment.`
+                );
             }
-            process.exit(0);
+            return; // success
         } catch (error) {
-            console.error("❌ AI token configuration failed:", error.message);
-            process.exit(1);
+            throw new Error(`AI token configuration failed: ${error.message}`);
         }
     }
 
@@ -129,10 +126,9 @@ const main = async () => {
     if (argv["configure-editor"]) {
         try {
             await configureEditor(argv.global || argv.g);
-            process.exit(0);
+            return; // success
         } catch (error) {
-            console.error("❌ Editor configuration failed:", error.message);
-            process.exit(1);
+            throw new Error(`Editor configuration failed: ${error.message}`);
         }
     }
 
@@ -142,11 +138,10 @@ const main = async () => {
         const isGlobal = argv.global || argv.g;
         try {
             await setChatGPTModel(String(modelRaw), isGlobal);
-            process.exit(0);
+            return; // success
         } catch (error) {
-            console.error("❌ Failed to set model:", error.message);
             console.log("ℹ️  Supported models:", CHATGPT_MODELS.join(", "));
-            process.exit(1);
+            throw new Error(`Failed to set model: ${error.message}`);
         }
     }
 
@@ -155,10 +150,9 @@ const main = async () => {
         const isGlobal = argv.global || argv.g;
         try {
             await showCurrentConfig(isGlobal);
-            process.exit(0);
+            return; // success
         } catch (error) {
-            console.error("❌ Failed to show configuration:", error.message);
-            process.exit(1);
+            throw new Error(`Failed to show configuration: ${error.message}`);
         }
     }
 
@@ -176,7 +170,7 @@ const main = async () => {
             "💡 Provide either: <source> <target> or just <target> to use current branch as source"
         );
         showUsage();
-        process.exit(1);
+        throw new Error("Missing required arguments");
     }
 
     if (positionalArgs.length === 1) {
@@ -186,8 +180,7 @@ const main = async () => {
             sourceBranch = current;
             jiraTickets = "";
         } catch (error) {
-            console.error("❌ Failed to detect current branch:", error.message);
-            process.exit(1);
+            throw new Error(`Failed to detect current branch: ${error.message}`);
         }
     }
 
@@ -198,7 +191,7 @@ const main = async () => {
             "💡 Provide either: <source> <target> or just <target> to use current branch as source"
         );
         showUsage();
-        process.exit(1);
+        throw new Error("Missing required arguments");
     }
 
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -209,7 +202,7 @@ const main = async () => {
         console.log("❌ Error: No configuration found.");
         console.log("💡 Run 'gen-mr --create-ai-token ChatGPT' to set up your OpenAI token first.");
         rl.close();
-        process.exit(1);
+        throw new Error("No configuration found");
     }
 
     const { gitlabToken, openaiToken, gitlabUrl } = config;
@@ -220,7 +213,7 @@ const main = async () => {
             "💡 Run 'gen-mr --create-ai-token ChatGPT' to set up your OpenAI token, or add 'openaiToken' to your .gen-mr/config.json file."
         );
         rl.close();
-        process.exit(1);
+        throw new Error("OpenAI token not found");
     }
 
     // Generate merge request using the new modular approach
@@ -250,7 +243,7 @@ const main = async () => {
     } catch (error) {
         console.error("❌ Failed to generate merge request:", error.message);
         rl.close();
-        process.exit(1);
+        throw new Error(`Failed to generate merge request: ${error.message}`);
     }
 
     rl.question("Do you want to edit the title/description? (y/N): ", async (edit) => {

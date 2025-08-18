@@ -17,7 +17,7 @@ import {
  *  - gen-pr <sourceBranch> <targetBranch> [jiraTickets]
  *  - gen-pr <targetBranch> [jiraTickets]   (uses current branch as source)
  *
- * Failure prints usage and exits (mirrors existing CLI behavior).
+ * Failure prints usage then throws (caller is expected to catch and handle exit).
  *
  * @param {object} params
  * @param {string[]} params.positionalArgs Raw positional args (argv._)
@@ -33,7 +33,7 @@ export const validateArguments = async ({ positionalArgs, showUsage }) => {
             "💡 Provide: <sourceBranch> <targetBranch> or just <targetBranch> to use current branch as source"
         );
         showUsage();
-        process.exit(1);
+        throw new Error("Missing required arguments");
     }
 
     let sourceBranch;
@@ -46,16 +46,12 @@ export const validateArguments = async ({ positionalArgs, showUsage }) => {
         try {
             sourceBranch = await getCurrentBranch();
         } catch (error) {
-            console.log(
-                `❌ Error: Unable to determine current branch automatically: ${error.message}`
-            );
-            process.exit(1);
+            throw new Error(`Unable to determine current branch automatically: ${error.message}`);
         }
         if (!sourceBranch) {
-            console.log(
-                "❌ Error: Could not resolve current branch. Pass both <sourceBranch> <targetBranch> explicitly."
+            throw new Error(
+                "Could not resolve current branch. Pass both <sourceBranch> <targetBranch> explicitly."
             );
-            process.exit(1);
         }
     } else {
         // 2 or more args -> first two are source/target
@@ -67,7 +63,7 @@ export const validateArguments = async ({ positionalArgs, showUsage }) => {
     if (!sourceBranch || !targetBranch) {
         console.log("❌ Error: Missing required arguments <sourceBranch> <targetBranch>");
         showUsage();
-        process.exit(1);
+        throw new Error("Missing required arguments <sourceBranch> <targetBranch>");
     }
 
     return { sourceBranch, targetBranch, jiraTickets };
@@ -210,7 +206,7 @@ export const validateBranchSyncAndGetRemote = async (localBranch, defaultRemoteN
  *  - Branch sync validation (source & target)
  *  - Prevent same-commit PRs
  *
- * On validation failure this function prints a helpful message and exits (to preserve current CLI behavior).
+ * On validation failure this function throws; caller prints and handles exit centrally.
  *
  * @param {object} params
  * @param {any} params.options Parsed minimist result (options)
@@ -237,28 +233,17 @@ export const validatePRInputAndBranches = async ({ args /* already validated */,
     let remoteTargetBranch;
     let targetSha;
     let upstreamRemoteName;
-    try {
-        ({
-            githubRemoteBranch: remoteSourceBranch,
-            upstreamRemote: upstreamRemoteName,
-            commitSha: sourceSha,
-        } = await validateBranchSyncAndGetRemote(sourceBranch, remoteName));
-    } catch (error) {
-        console.log(`❌ Error: ${error.message}`);
-        process.exit(1);
-    }
+    ({
+        githubRemoteBranch: remoteSourceBranch,
+        upstreamRemote: upstreamRemoteName,
+        commitSha: sourceSha,
+    } = await validateBranchSyncAndGetRemote(sourceBranch, remoteName));
 
-    try {
-        ({ githubRemoteBranch: remoteTargetBranch, commitSha: targetSha } =
-            await validateBranchSyncAndGetRemote(targetBranch, remoteName));
-    } catch (error) {
-        console.log(`❌ Error: ${error.message}`);
-        process.exit(1);
-    }
+    ({ githubRemoteBranch: remoteTargetBranch, commitSha: targetSha } =
+        await validateBranchSyncAndGetRemote(targetBranch, remoteName));
 
     if (sourceSha === targetSha) {
-        console.log(`❌ Error: Source and target branches at the same commit`);
-        process.exit(1);
+        throw new Error("Source and target branches at the same commit");
     }
 
     return {
