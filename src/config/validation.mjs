@@ -225,22 +225,21 @@ export const validateBranchSyncAndGetRemote = async (localBranch, defaultRemoteN
  */
 export const validatePRInputAndBranches = async ({ args /* already validated */, remoteName }) => {
     // Arguments are assumed validated & present (sourceBranch, targetBranch[, jiraTickets])
-    const { sourceBranch, targetBranch, jiraTickets } = args;
+    const { sourceBranch, targetBranch } = args;
 
     // Ensure local branches are fully synced to their upstream and get the remote-tracked names
-    let remoteSourceBranch;
-    let sourceSha;
-    let remoteTargetBranch;
-    let targetSha;
-    let upstreamRemoteName;
-    ({
-        githubRemoteBranch: remoteSourceBranch,
-        upstreamRemote: upstreamRemoteName,
-        commitSha: sourceSha,
-    } = await validateBranchSyncAndGetRemote(sourceBranch, remoteName));
-
-    ({ githubRemoteBranch: remoteTargetBranch, commitSha: targetSha } =
-        await validateBranchSyncAndGetRemote(targetBranch, remoteName));
+    // Validate both branches concurrently for speed
+    const [
+        {
+            githubRemoteBranch: remoteSourceBranch,
+            upstreamRemote: upstreamRemoteName,
+            commitSha: sourceSha,
+        },
+        { githubRemoteBranch: remoteTargetBranch, commitSha: targetSha },
+    ] = await Promise.all([
+        validateBranchSyncAndGetRemote(sourceBranch, remoteName),
+        validateBranchSyncAndGetRemote(targetBranch, remoteName),
+    ]);
 
     if (sourceSha === targetSha) {
         throw new Error("Source and target branches at the same commit");
@@ -249,7 +248,6 @@ export const validatePRInputAndBranches = async ({ args /* already validated */,
     return {
         sourceBranch,
         targetBranch,
-        jiraTickets,
         remoteName,
         remoteSourceBranch,
         remoteTargetBranch,
