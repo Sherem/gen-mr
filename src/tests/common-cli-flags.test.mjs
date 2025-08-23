@@ -89,7 +89,7 @@ describe("handleCommonCliFlags", () => {
             include: ["show-config"],
         });
         expect(handled).toBe(true);
-        expect(showCurrentConfigMock).toHaveBeenCalledWith(true);
+        expect(showCurrentConfigMock).toHaveBeenCalledWith(true, "gen-pr");
     });
 
     test("respects include order (first flag wins)", async () => {

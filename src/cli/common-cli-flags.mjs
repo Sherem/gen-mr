@@ -7,7 +7,7 @@ import { createAiToken } from "../ai/create-ai-token.mjs";
 import { setChatGPTModel, CHATGPT_MODELS } from "../ai/chatgpt.mjs";
 import { showCurrentConfig } from "../config/common.mjs";
 import { configureEditor } from "../config/editor-config.mjs";
-import { configureGithubToken } from "../config/token-config.mjs";
+import { configureGithubToken, configureGitlabToken } from "../config/token-config.mjs";
 
 /**
  * Handle shared CLI flags. Processes the first matching flag (if any)
@@ -31,7 +31,11 @@ export async function handleCommonCliFlags({ argv, toolName, include }) {
     for (const flag of flagsOrder) {
         if (flag === "create-token" && argv["create-token"]) {
             try {
-                await configureGithubToken(isGlobal);
+                if (toolName === "gen-mr") {
+                    await configureGitlabToken(isGlobal);
+                } else {
+                    await configureGithubToken(isGlobal);
+                }
             } catch (error) {
                 throw new Error(`Token configuration failed: ${error.message}`);
             }
@@ -67,7 +71,7 @@ export async function handleCommonCliFlags({ argv, toolName, include }) {
 
         if (flag === "show-config" && argv["show-config"]) {
             try {
-                await showCurrentConfig(isGlobal);
+                await showCurrentConfig(isGlobal, toolName);
             } catch (error) {
                 throw new Error(`Failed to show configuration: ${error.message}`);
             }
