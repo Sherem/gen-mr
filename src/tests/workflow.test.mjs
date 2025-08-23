@@ -35,13 +35,6 @@ jest.mock("../config/validation.mjs", () => ({
 
 const mockFindExistingPullRequest = jest.fn();
 const mockCreateOrUpdatePullRequest = jest.fn();
-const mockCreateGithubProvider = jest.fn(() => ({
-    findExistingPullRequest: (...a) => mockFindExistingPullRequest(...a),
-    createOrUpdatePullRequest: (...a) => mockCreateOrUpdatePullRequest(...a),
-}));
-jest.mock("../repo-providers/github-provider.mjs", () => ({
-    createGithubProvider: (...a) => mockCreateGithubProvider(...a),
-}));
 
 const mockGenerateMergeRequestSafe = jest.fn();
 const mockGetDefaultPromptOptions = jest.fn(() => ({ includeGitDiff: true }));
@@ -89,6 +82,10 @@ beforeEach(() => {
 });
 
 describe("executePRWorkflow", () => {
+    const buildRepoProvider = () => ({
+        findExistingPullRequest: (...a) => mockFindExistingPullRequest(...a),
+        createOrUpdatePullRequest: (...a) => mockCreateOrUpdatePullRequest(...a),
+    });
     test("new PR save", async () => {
         mockFindExistingPullRequest.mockResolvedValue(null);
         mockGenerateMergeRequestSafe.mockResolvedValue(makeResult());
@@ -99,6 +96,10 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: {
+                findExistingPullRequest: (...a) => mockFindExistingPullRequest(...a),
+                createOrUpdatePullRequest: (...a) => mockCreateOrUpdatePullRequest(...a),
+            },
         });
         expect(mockCreateOrUpdatePullRequest).toHaveBeenCalled();
     });
@@ -111,6 +112,10 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: {
+                findExistingPullRequest: (...a) => mockFindExistingPullRequest(...a),
+                createOrUpdatePullRequest: (...a) => mockCreateOrUpdatePullRequest(...a),
+            },
         });
         expect(result).toEqual(expect.objectContaining({ cancelled: true }));
     });
@@ -125,6 +130,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         expect(mockGenerateMergeRequestSafe).toHaveBeenCalled();
         expect(mockCreateOrUpdatePullRequest).toHaveBeenCalledWith(
@@ -142,6 +148,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         }).catch(() => {
             return;
         });
@@ -163,6 +170,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         const call = mockCreateOrUpdatePullRequest.mock.calls.at(-1)[0];
         expect(call.title).toBe("Edited");
@@ -180,6 +188,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         const call = mockCreateOrUpdatePullRequest.mock.calls.at(-1)[0];
         expect(call.title).toBe("Init Title");
@@ -196,6 +205,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         const call = mockCreateOrUpdatePullRequest.mock.calls.at(-1)[0];
         expect(call.title).toBe("Manual Title");
@@ -213,6 +223,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         const call = mockCreateOrUpdatePullRequest.mock.calls.at(-1)[0];
         expect(call.title).toBe("Init Title");
@@ -233,6 +244,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         // Ensure regenerateMergeRequest was invoked and final save uses regenerated title
         expect(mockGenerateMergeRequest).toHaveBeenCalled();
@@ -248,6 +260,7 @@ describe("executePRWorkflow", () => {
                 remoteName: "origin",
                 config: { githubToken: "TOK" },
                 repository: "owner/repo",
+                repoProvider: buildRepoProvider(),
             })
         ).rejects.toThrow("bad");
     });
@@ -260,6 +273,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         expect(res).toEqual(expect.objectContaining({ cancelled: true }));
     });
@@ -274,6 +288,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         expect(mockCreateOrUpdatePullRequest).toHaveBeenCalled();
     });
@@ -287,6 +302,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         expect(mockCreateOrUpdatePullRequest).not.toHaveBeenCalled();
     });
@@ -301,6 +317,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         expect(mockCreateOrUpdatePullRequest).toHaveBeenCalled();
     });
@@ -316,6 +333,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         expect(mockCreateOrUpdatePullRequest).not.toHaveBeenCalled();
     });
@@ -333,6 +351,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         const call = mockCreateOrUpdatePullRequest.mock.calls.at(-1)[0];
         expect(call.title).toBe("Manual After Error");
@@ -349,6 +368,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         const call = mockCreateOrUpdatePullRequest.mock.calls.at(-1)[0];
         expect(call.title).toBe("Init Title"); // unchanged
@@ -366,6 +386,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         }).catch(() => {
             return;
         });
@@ -384,6 +405,7 @@ describe("executePRWorkflow", () => {
                 remoteName: "origin",
                 config: { githubToken: "TOK" },
                 repository: "owner/repo",
+                repoProvider: buildRepoProvider(),
             })
         ).rejects.toThrow(); // downstream failure due to missing fallback result
         // Ensure the specific log lines (384-385) executed
@@ -405,6 +427,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         }).catch(() => {
             return;
         });
@@ -430,6 +453,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         }).catch(() => {
             return;
         });
@@ -449,6 +473,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         // ensure no save happened
         expect(mockCreateOrUpdatePullRequest).not.toHaveBeenCalled();
@@ -474,6 +499,7 @@ describe("executePRWorkflow", () => {
             remoteName: "origin",
             config: { githubToken: "TOK" },
             repository: "owner/repo",
+            repoProvider: buildRepoProvider(),
         });
         expect(mockGenerateMergeRequest).toHaveBeenCalled();
         const opts = mockGenerateMergeRequest.mock.calls.at(-1)[4];

@@ -145,8 +145,9 @@ export const editPullRequestContent = async (title, description, line, fileExten
 /**
  * Display current configuration
  * @param {boolean} isGlobal - Whether to show global configuration specifically
+ * @param {string} toolName - The tool name ('gen-pr' or 'gen-mr') to show appropriate config
  */
-export const showCurrentConfig = async (isGlobal = false) => {
+export const showCurrentConfig = async (isGlobal = false, toolName = "gen-pr") => {
     console.log("\n⚙️  Current Configuration");
     console.log("=".repeat(40));
 
@@ -181,7 +182,7 @@ export const showCurrentConfig = async (isGlobal = false) => {
 
         if (globalConfig) {
             console.log("   Status: ✅ Found");
-            displayConfigContents(globalConfig);
+            displayConfigContents(globalConfig, toolName);
         } else {
             console.log("   Status: ❌ Not found");
         }
@@ -195,7 +196,7 @@ export const showCurrentConfig = async (isGlobal = false) => {
         console.log(`   Path: ${localPath}`);
         if (localConfig) {
             console.log("   Status: ✅ Found");
-            displayConfigContents(localConfig);
+            displayConfigContents(localConfig, toolName);
         } else {
             console.log("   Status: ❌ Not found");
         }
@@ -207,7 +208,7 @@ export const showCurrentConfig = async (isGlobal = false) => {
         console.log(`   Path: ${globalPath}`);
         if (globalConfig) {
             console.log("   Status: ✅ Found");
-            displayConfigContents(globalConfig);
+            displayConfigContents(globalConfig, toolName);
         } else {
             console.log("   Status: ❌ Not found");
         }
@@ -219,15 +220,17 @@ export const showCurrentConfig = async (isGlobal = false) => {
         if (effectiveConfig) {
             console.log("🎯 Effective Configuration (currently in use):");
             console.log(`   Source: ${localConfig ? "Local" : "Global"}`);
-            displayConfigContents(effectiveConfig);
+            displayConfigContents(effectiveConfig, toolName);
         } else {
             console.log("🎯 Effective Configuration: ❌ No configuration found");
             console.log("");
             console.log("💡 To get started, configure the following:");
-            console.log("   • GitHub token: gen-pr --create-token");
-            console.log("   • AI token: gen-pr --create-ai-token ChatGPT");
-            console.log("   • Editor: gen-pr --configure-editor");
-            console.log("   • AI model: gen-pr --use-model gpt-4o");
+
+            const providerName = toolName === "gen-mr" ? "GitLab" : "GitHub";
+            console.log(`   • ${providerName} token: ${toolName} --create-token`);
+            console.log(`   • AI token: ${toolName} --create-ai-token ChatGPT`);
+            console.log(`   • Editor: ${toolName} --configure-editor`);
+            console.log(`   • AI model: ${toolName} --use-model gpt-4o`);
         }
     }
 
@@ -237,8 +240,9 @@ export const showCurrentConfig = async (isGlobal = false) => {
 /**
  * Display the contents of a configuration object
  * @param {Object} config - The configuration object to display
+ * @param {string} toolName - The tool name ('gen-pr' or 'gen-mr') to show appropriate config
  */
-const displayConfigContents = (config) => {
+const displayConfigContents = (config, toolName = "gen-pr") => {
     const keys = Object.keys(config);
     if (keys.length === 0) {
         console.log("   Contents: (empty)");
@@ -247,10 +251,19 @@ const displayConfigContents = (config) => {
 
     console.log("   Contents:");
 
-    // GitHub Token
-    if (config.githubToken) {
-        const masked = `${config.githubToken.substring(0, 4)}${"*".repeat(Math.max(0, config.githubToken.length - 8))}${config.githubToken.substring(config.githubToken.length - 4)}`;
-        console.log(`     • GitHub Token: ${masked}`);
+    // GitHub/GitLab Token
+    const isGitlab = toolName === "gen-mr";
+    const providerName = isGitlab ? "GitLab" : "GitHub";
+    const tokenKey = isGitlab ? "gitlabToken" : "githubToken";
+
+    if (config[tokenKey]) {
+        const masked = `${config[tokenKey].substring(0, 4)}${"*".repeat(Math.max(0, config[tokenKey].length - 8))}${config[tokenKey].substring(config[tokenKey].length - 4)}`;
+        console.log(`     • ${providerName} Token: ${masked}`);
+    }
+
+    // GitLab Host (only for gen-mr)
+    if (isGitlab && config.gitlabHost) {
+        console.log(`     • GitLab Host: ${config.gitlabHost}`);
     }
 
     // OpenAI Token
@@ -270,7 +283,14 @@ const displayConfigContents = (config) => {
     }
 
     // Show any other unexpected keys
-    const knownKeys = ["githubToken", "openaiToken", "openaiModel", "editorCommand"];
+    const knownKeys = [
+        "githubToken",
+        "gitlabToken",
+        "gitlabHost",
+        "openaiToken",
+        "openaiModel",
+        "editorCommand",
+    ];
     const unknownKeys = keys.filter((key) => !knownKeys.includes(key));
     if (unknownKeys.length > 0) {
         unknownKeys.forEach((key) => {

@@ -3,18 +3,13 @@
 // CLI tool for creating GitHub pull requests with AI-generated name/description
 
 import minimist from "minimist";
-import { configureGithubToken, showTokenConfigHelp } from "./config/token-config.mjs";
-import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
-import { showCurrentConfig } from "./config/common.mjs";
-import {
-    configureChatGPTToken,
-    showAiTokenConfigHelp,
-    setChatGPTModel,
-    showChatGPTModelsHelp,
-    CHATGPT_MODELS,
-} from "./ai/chatgpt.mjs";
+import { showTokenConfigHelp } from "./config/token-config.mjs";
+import { showEditorConfigHelp } from "./config/editor-config.mjs";
+import { showAiTokenConfigHelp, showChatGPTModelsHelp } from "./ai/chatgpt.mjs";
 import { executePRWorkflow } from "./workflow.mjs";
+import { createGithubProvider } from "./repo-providers/github-provider.mjs";
 import { validateArguments, validateGitHubConfigAndRepository } from "./config/validation.mjs";
+import { handleCommonCliFlags } from "./cli/common-cli-flags.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -91,78 +86,9 @@ const main = async () => {
         return; // success path
     }
 
-    // Handle token configuration
-    if (argv["create-token"]) {
-        try {
-            await configureGithubToken(argv.global || argv.g);
-            return; // success
-        } catch (error) {
-            throw new Error(`Token configuration failed: ${error.message}`);
-        }
-    }
-
-    // Handle editor configuration
-    if (argv["configure-editor"]) {
-        try {
-            await configureEditor(argv.global || argv.g);
-            return; // success
-        } catch (error) {
-            throw new Error(`Editor configuration failed: ${error.message}`);
-        }
-    }
-
-    // Handle AI token configuration
-    if (argv["create-ai-token"]) {
-        const llmRaw = argv["create-ai-token"]; // expects a value like "ChatGPT"
-        const llm = String(llmRaw || "")
-            .trim()
-            .toLowerCase();
-        const isGlobal = argv.global || argv.g;
-
-        // Supported aliases mapping to ChatGPT
-        const chatgptAliases = new Set(["chatgpt", "openai", "gpt", "gpt-3.5", "gpt-4", "gpt-4o"]);
-
-        if (!llm) {
-            throw new Error("Missing LLM argument. Example: gen-pr --create-ai-token ChatGPT");
-        }
-
-        try {
-            if (chatgptAliases.has(llm)) {
-                await configureChatGPTToken(isGlobal);
-            } else {
-                console.log("ℹ️  Try: gen-pr --create-ai-token ChatGPT");
-                throw new Error(
-                    `Unsupported LLM '${llmRaw}'. Only ChatGPT is implemented at the moment.`
-                );
-            }
-            return; // success
-        } catch (error) {
-            throw new Error(`AI token configuration failed: ${error.message}`);
-        }
-    }
-
-    // Handle model selection
-    if (argv["use-model"]) {
-        const modelRaw = argv["use-model"]; // expects a value like "gpt-4o"
-        const isGlobal = argv.global || argv.g;
-        try {
-            await setChatGPTModel(String(modelRaw), isGlobal);
-            return; // success
-        } catch (error) {
-            console.log("ℹ️  Supported models:", CHATGPT_MODELS.join(", "));
-            throw new Error(`Failed to set model: ${error.message}`);
-        }
-    }
-
-    // Handle show config
-    if (argv["show-config"]) {
-        const isGlobal = argv.global || argv.g;
-        try {
-            await showCurrentConfig(isGlobal);
-            return; // success
-        } catch (error) {
-            throw new Error(`Failed to show configuration: ${error.message}`);
-        }
+    // Handle all shared CLI flags
+    if (await handleCommonCliFlags({ argv, toolName: "gen-pr" })) {
+        return;
     }
 
     // Validate positional args and transform into structured args
@@ -183,7 +109,8 @@ const main = async () => {
         throw new Error(error.message);
     }
 
-    await executePRWorkflow({ args, remoteName, config, repository: githubRepo });
+    const repoProvider = createGithubProvider({ githubToken: config.githubToken });
+    await executePRWorkflow({ args, remoteName, config, repository: githubRepo, repoProvider });
 };
 
 main().catch((error) => {

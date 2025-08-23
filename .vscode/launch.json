@@ -21,6 +21,20 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Gen-pr AI token",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/src/gen-pr.mjs",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": [
+                "--create-ai-token"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Gen-pr",
             "skipFiles": [
                 "<node_internals>/**"
@@ -30,6 +44,22 @@
             "console": "integratedTerminal",
             "args": [
                 "main"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Gen-Mr",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/src/gen-mr.mjs",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "args": [
+                "main",
+                "--remote",
+                "gitlab.com"
             ]
         }
     ]
