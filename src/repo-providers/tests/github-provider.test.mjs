@@ -150,7 +150,7 @@ describe("github-provider findExistingPullRequest", () => {
 
 describe("github-provider createOrUpdatePullRequest", () => {
     const baseOpts = {
-        githubRepo: "owner/repo",
+        repository: "owner/repo",
         sourceBranch: "feature",
         targetBranch: "main",
         title: "My PR",
@@ -165,7 +165,7 @@ describe("github-provider createOrUpdatePullRequest", () => {
         const logSpy = jest.spyOn(console, "log").mockImplementation(() => {
             return;
         });
-        const out = await gh.createOrUpdatePullRequest({ ...baseOpts, existingPR: null });
+        const out = await gh.createOrUpdatePullRequest({ ...baseOpts, existingRequest: null });
         expect(out).toEqual(resp);
         expect(logSpy).toHaveBeenCalledWith("✅ Pull request created:", resp.html_url);
         const [url, init] = global.fetch.mock.calls[0];
@@ -187,7 +187,10 @@ describe("github-provider createOrUpdatePullRequest", () => {
         const logSpy = jest.spyOn(console, "log").mockImplementation(() => {
             return;
         });
-        const out = await gh.createOrUpdatePullRequest({ ...baseOpts, existingPR: { number: 7 } });
+        const out = await gh.createOrUpdatePullRequest({
+            ...baseOpts,
+            existingRequest: { number: 7 },
+        });
         expect(out).toEqual(resp);
         expect(logSpy).toHaveBeenCalledWith("✅ Pull request updated:", resp.html_url);
         const [url, init] = global.fetch.mock.calls[0];
@@ -205,7 +208,7 @@ describe("github-provider createOrUpdatePullRequest", () => {
             return;
         });
         await expect(
-            gh.createOrUpdatePullRequest({ ...baseOpts, existingPR: null })
+            gh.createOrUpdatePullRequest({ ...baseOpts, existingRequest: null })
         ).rejects.toThrow(errMsg);
         expect(errSpy).toHaveBeenCalledWith("❌ Failed to create pull request:", errMsg);
         errSpy.mockRestore();
@@ -218,7 +221,7 @@ describe("github-provider createOrUpdatePullRequest", () => {
             return;
         });
         await expect(
-            gh.createOrUpdatePullRequest({ ...baseOpts, existingPR: { number: 42 } })
+            gh.createOrUpdatePullRequest({ ...baseOpts, existingRequest: { number: 42 } })
         ).rejects.toThrow(errMsg);
         expect(errSpy).toHaveBeenCalledWith("❌ Failed to update pull request:", errMsg);
         errSpy.mockRestore();

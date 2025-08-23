@@ -3,14 +3,12 @@
 // CLI tool for creating GitLab merge requests with AI-generated name/description
 
 import minimist from "minimist";
-import readline from "readline";
-import { getConfig, getEditorCommand, editPullRequestContent } from "./config/common.mjs";
-import { showAiTokenConfigHelp } from "./ai/chatgpt.mjs";
-import { showChatGPTModelsHelp } from "./ai/chatgpt.mjs";
+import { showAiTokenConfigHelp, showChatGPTModelsHelp } from "./ai/chatgpt.mjs";
 import { showEditorConfigHelp } from "./config/editor-config.mjs";
-import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
+import { executePRWorkflow } from "./workflow.mjs";
+import { createGitlabProvider } from "./repo-providers/gitlab-provider.mjs";
+import { validateArguments, validateGitLabConfigAndRepository } from "./config/validation.mjs";
 import { handleCommonCliFlags } from "./cli/common-cli-flags.mjs";
-import { validateArguments } from "./config/validation.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: { g: "global" },
@@ -18,22 +16,6 @@ const argv = minimist(process.argv.slice(2), {
 
 // Extract positional arguments (non-option arguments)
 const positionalArgs = argv._;
-
-const postToGitlab = async (url, data, token) => {
-    const response = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "PRIVATE-TOKEN": token,
-        },
-        body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err);
-    }
-    return response.json();
-};
 
 const showUsage = () => {
     console.log("\n📋 gen-mr - GitLab Merge Request Generator");
@@ -86,7 +68,7 @@ const main = async () => {
     // Handle help
     if (argv.help) {
         showUsage();
-        return; // success
+        return; // success path
     }
 
     // Handle all shared CLI flags
@@ -94,119 +76,29 @@ const main = async () => {
         return;
     }
 
-    // Validate positional arguments using shared validation logic
-    const { sourceBranch, targetBranch, jiraTickets } = await validateArguments({
-        positionalArgs,
-        showUsage,
-    });
+    // Validate positional args and transform into structured args
+    const args = await validateArguments({ positionalArgs, showUsage });
 
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    // Determine remote name (default origin)
+    const remoteNameArg = String(argv.remote || "").trim();
+    const remoteName = remoteNameArg || "origin";
+
+    // Config & repository validation (moved from validation module)
     let config;
+    let gitlabRepo;
     try {
-        config = await getConfig();
-    } catch {
-        console.log("❌ Error: No configuration found.");
-        console.log("💡 Run 'gen-mr --create-ai-token ChatGPT' to set up your OpenAI token first.");
-        rl.close();
-        throw new Error("No configuration found");
-    }
-
-    const { gitlabToken, openaiToken, gitlabUrl } = config;
-
-    if (!openaiToken) {
-        console.log("❌ Error: OpenAI token not found in configuration.");
-        console.log(
-            "💡 Run 'gen-mr --create-ai-token ChatGPT' to set up your OpenAI token, or add 'openaiToken' to your .gen-mr/config.json file."
-        );
-        rl.close();
-        throw new Error("OpenAI token not found");
-    }
-
-    // Generate merge request using the new modular approach
-    let result;
-    try {
-        console.log("🔍 Generating AI-powered merge request...");
-
-        const promptOptions = getDefaultPromptOptions({
-            includeGitDiff: true,
-            includeCommitMessages: true,
-            includeChangedFiles: true,
-        });
-
-        result = await generateMergeRequestSafe(config, sourceBranch, targetBranch, jiraTickets, {
-            aiModel: "ChatGPT",
-            promptOptions,
-            verbose: true,
-        });
-
-        console.log("\n" + "=".repeat(60));
-        console.log("📝 Generated Merge Request");
-        console.log("=".repeat(60));
-        console.log(`\n🏷️  Title: ${result.title}`);
-        console.log(`\n📄 Description:\n${result.description}`);
-        console.log(`\n🤖 Generated using: ${result.aiModel} (${result.model})`);
-        console.log("=".repeat(60));
+        const validationResult = await validateGitLabConfigAndRepository(remoteName);
+        config = validationResult.config;
+        gitlabRepo = validationResult.gitlabRepo;
     } catch (error) {
-        console.error("❌ Failed to generate merge request:", error.message);
-        rl.close();
-        throw new Error(`Failed to generate merge request: ${error.message}`);
+        throw new Error(error.message);
     }
 
-    rl.question("Do you want to edit the title/description? (y/N): ", async (edit) => {
-        let finalTitle = result.title;
-        let finalDescription = result.description;
-
-        const editorCommand = await getEditorCommand();
-        const hasEditor = editorCommand !== null;
-
-        if (edit.toLowerCase() === "y") {
-            if (hasEditor) {
-                try {
-                    console.log("🚀 Opening editor...");
-                    const editedContent = await editPullRequestContent(
-                        finalTitle,
-                        finalDescription,
-                        1,
-                        ".md"
-                    );
-
-                    finalTitle = editedContent.title;
-                    finalDescription = editedContent.description;
-
-                    console.log("✅ Content updated from editor");
-                } catch (error) {
-                    console.error("❌ Editor error:", error.message);
-                    console.log("💡 Falling back to manual input");
-                    finalTitle = await new Promise((res) => rl.question("New Title: ", res));
-                    finalDescription = await new Promise((res) =>
-                        rl.question("New Description: ", res)
-                    );
-                }
-            } else {
-                finalTitle = await new Promise((res) => rl.question("New Title: ", res));
-                finalDescription = await new Promise((res) =>
-                    rl.question("New Description: ", res)
-                );
-            }
-        }
-        // Create MR via GitLab API using native fetch
-        try {
-            const res = await postToGitlab(
-                `${gitlabUrl}/api/v4/projects/${config.gitlabProjectId}/merge_requests`,
-                {
-                    source_branch: sourceBranch,
-                    target_branch: targetBranch,
-                    title: finalTitle,
-                    description: finalDescription,
-                },
-                gitlabToken
-            );
-            console.log("Merge request created:", res.web_url);
-        } catch (err) {
-            console.error("Failed to create merge request:", err.message);
-        }
-        rl.close();
+    const repoProvider = createGitlabProvider({
+        gitlabToken: config.gitlabToken,
+        gitlabHost: config.gitlabHost,
     });
+    await executePRWorkflow({ args, remoteName, config, repository: gitlabRepo, repoProvider });
 };
 
 main().catch((err) => {

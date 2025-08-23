@@ -135,7 +135,11 @@ describe("gitlab-provider findExistingMergeRequest", () => {
         const mrs = [{ iid: 10, web_url: "u" }, { iid: 11 }];
         mockFetchOk(mrs);
         const mr = await gl.findExistingMergeRequest(repo, sourceBranch, targetBranch);
-        expect(mr).toEqual(mrs[0]);
+        expect(mr).toEqual({
+            ...mrs[0],
+            html_url: mrs[0].web_url,
+            body: mrs[0].description,
+        });
         const [url, init] = global.fetch.mock.calls[0];
         expect(url).toBe(
             `https://gitlab.com/api/v4/projects/${encodeURIComponent(repo)}/merge_requests?state=opened&source_branch=${sourceBranch}&target_branch=${targetBranch}`
@@ -148,6 +152,25 @@ describe("gitlab-provider findExistingMergeRequest", () => {
         mockFetchOk([]);
         const mr = await gl.findExistingMergeRequest(repo, sourceBranch, targetBranch);
         expect(mr).toBeNull();
+    });
+
+    test("maps GitLab fields to workflow-expected format", async () => {
+        const mrFromGitlab = {
+            iid: 123,
+            title: "Test MR Title",
+            description: "This is the MR description",
+            web_url: "https://gitlab.com/owner/repo/-/merge_requests/123",
+            state: "opened",
+            source_branch: "feature",
+            target_branch: "main",
+        };
+        mockFetchOk([mrFromGitlab]);
+        const mr = await gl.findExistingMergeRequest(repo, sourceBranch, targetBranch);
+        expect(mr).toEqual({
+            ...mrFromGitlab,
+            html_url: mrFromGitlab.web_url, // Added for workflow compatibility
+            body: mrFromGitlab.description, // Added for workflow compatibility
+        });
     });
 
     test("returns null and warns when request fails", async () => {
@@ -167,7 +190,7 @@ describe("gitlab-provider findExistingMergeRequest", () => {
 
 describe("gitlab-provider createOrUpdateMergeRequest", () => {
     const baseOpts = {
-        gitlabRepo: "owner/repo",
+        repository: "owner/repo",
         sourceBranch: "feature",
         targetBranch: "main",
         title: "My MR",
@@ -182,12 +205,12 @@ describe("gitlab-provider createOrUpdateMergeRequest", () => {
         const logSpy = jest.spyOn(console, "log").mockImplementation(() => {
             return;
         });
-        const out = await gl.createOrUpdateMergeRequest({ ...baseOpts, existingMR: null });
+        const out = await gl.createOrUpdateMergeRequest({ ...baseOpts, existingRequest: null });
         expect(out).toEqual(resp);
         expect(logSpy).toHaveBeenCalledWith("✅ Merge request created:", resp.web_url);
         const [url, init] = global.fetch.mock.calls[0];
         expect(url).toBe(
-            `https://gitlab.com/api/v4/projects/${encodeURIComponent(baseOpts.gitlabRepo)}/merge_requests`
+            `https://gitlab.com/api/v4/projects/${encodeURIComponent(baseOpts.repository)}/merge_requests`
         );
         expect(init.method).toBe("POST");
         const body = JSON.parse(init.body);
@@ -206,12 +229,15 @@ describe("gitlab-provider createOrUpdateMergeRequest", () => {
         const logSpy = jest.spyOn(console, "log").mockImplementation(() => {
             return;
         });
-        const out = await gl.createOrUpdateMergeRequest({ ...baseOpts, existingMR: { iid: 7 } });
+        const out = await gl.createOrUpdateMergeRequest({
+            ...baseOpts,
+            existingRequest: { iid: 7 },
+        });
         expect(out).toEqual(resp);
         expect(logSpy).toHaveBeenCalledWith("✅ Merge request updated:", resp.web_url);
         const [url, init] = global.fetch.mock.calls[0];
         expect(url).toBe(
-            `https://gitlab.com/api/v4/projects/${encodeURIComponent(baseOpts.gitlabRepo)}/merge_requests/7`
+            `https://gitlab.com/api/v4/projects/${encodeURIComponent(baseOpts.repository)}/merge_requests/7`
         );
         expect(init.method).toBe("PUT");
         const body = JSON.parse(init.body);
@@ -226,7 +252,7 @@ describe("gitlab-provider createOrUpdateMergeRequest", () => {
             return;
         });
         await expect(
-            gl.createOrUpdateMergeRequest({ ...baseOpts, existingMR: null })
+            gl.createOrUpdateMergeRequest({ ...baseOpts, existingRequest: null })
         ).rejects.toThrow(errMsg);
         expect(errSpy).toHaveBeenCalledWith("❌ Failed to create merge request:", errMsg);
         errSpy.mockRestore();
@@ -239,7 +265,7 @@ describe("gitlab-provider createOrUpdateMergeRequest", () => {
             return;
         });
         await expect(
-            gl.createOrUpdateMergeRequest({ ...baseOpts, existingMR: { iid: 42 } })
+            gl.createOrUpdateMergeRequest({ ...baseOpts, existingRequest: { iid: 42 } })
         ).rejects.toThrow(errMsg);
         expect(errSpy).toHaveBeenCalledWith("❌ Failed to update merge request:", errMsg);
         errSpy.mockRestore();
@@ -251,11 +277,11 @@ describe("gitlab-provider createOrUpdateMergeRequest", () => {
         const resp = { iid: 5, web_url: `https://${customHost}/mr/5` };
         mockFetchOk(resp);
 
-        await customGl.createOrUpdateMergeRequest({ ...baseOpts, existingMR: null });
+        await customGl.createOrUpdateMergeRequest({ ...baseOpts, existingRequest: null });
 
         const [url] = global.fetch.mock.calls[0];
         expect(url).toBe(
-            `https://${customHost}/api/v4/projects/${encodeURIComponent(baseOpts.gitlabRepo)}/merge_requests`
+            `https://${customHost}/api/v4/projects/${encodeURIComponent(baseOpts.repository)}/merge_requests`
         );
     });
 });

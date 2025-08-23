@@ -89,7 +89,7 @@ const regenerateMergeRequest = async (
  * @param {string} targetBranch - Target branch name
  * @param {string} jiraTickets - JIRA ticket IDs
  * @param {object} initialResult - Initial MR generation result
- * @param {object} prConfig - PR configuration (repo, token, etc.)
+ * @param {object} prConfig - PR configuration (repo, etc.)
  * @param {object} repoProvider - Repository provider (GitHub implementation)
  * @returns {Promise<void>}
  */
@@ -220,13 +220,13 @@ const handleUserInteraction = async (
     const saveMergeRequest = async () => {
         try {
             await prConfig.repoProvider.createOrUpdatePullRequest({
-                githubRepo: prConfig.repository,
+                repository: prConfig.repository,
                 // Use tracked remote branch for GitHub API operations
                 sourceBranch: prConfig.remoteSourceBranch || sourceBranch,
                 targetBranch: prConfig.remoteTargetBranch || targetBranch,
                 title: currentResult.title,
                 description: currentResult.description,
-                existingPR: prConfig.existingPR,
+                existingRequest: prConfig.existingPR,
             });
         } catch {
             // Error handling is already done in createOrUpdatePullRequest
@@ -279,7 +279,7 @@ const handleUserInteraction = async (
  * @param {string} sourceBranch - Source branch to merge from
  * @param {string} targetBranch - Target branch to merge into
  * @param {string} jiraTickets - Comma-separated JIRA ticket IDs (optional)
- * @param {object} config - Configuration object containing tokens
+ * @param {object} config - Configuration object
  * @param {string} repository - Remote repository name in format "owner/repo"
  * @returns {Promise<void>}
  */
@@ -305,8 +305,6 @@ export const executePRWorkflow = async ({ args, remoteName, config, repository, 
             remoteTargetBranch,
             upstreamRemoteName,
         } = await validatePRInputAndBranches({ args, remoteName });
-
-        const { githubToken } = config; // keep for compatibility with handleUserInteraction
 
         const promptOptions = getDefaultPromptOptions({
             includeGitDiff: true,
@@ -429,7 +427,6 @@ export const executePRWorkflow = async ({ args, remoteName, config, repository, 
         // Handle user interaction with menu system
         await handleUserInteraction(rl, config, sourceBranch, targetBranch, jiraTickets, result, {
             repository,
-            githubToken,
             existingPR,
             remoteSourceBranch,
             remoteTargetBranch,
