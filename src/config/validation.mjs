@@ -133,6 +133,76 @@ export const validateGitHubConfigAndRepository = async (remoteName) => {
 };
 
 /**
+ * Validate configuration and repository setup for MR generation
+ * @returns {Promise<object>} Configuration and repository information
+ * @throws {Error} If configuration or repository validation fails
+ */
+export const validateGitLabConfigAndRepository = async (remoteName) => {
+    // Get configuration
+    let config;
+    try {
+        config = await getConfig();
+    } catch {
+        throw new Error(
+            "No configuration found. Run 'gen-mr --create-token' to set up your GitLab token first."
+        );
+    }
+
+    const { gitlabToken, gitlabHost, openaiToken } = config;
+
+    if (!gitlabToken) {
+        throw new Error(
+            "GitLab token not found in configuration. Run 'gen-mr --create-token' to set up your GitLab token."
+        );
+    }
+
+    if (!gitlabHost) {
+        throw new Error(
+            "GitLab host not found in configuration. Run 'gen-mr --create-token' to set up your GitLab host."
+        );
+    }
+
+    if (!openaiToken) {
+        throw new Error(
+            "OpenAI token not found in configuration. Please add 'openaiToken' to your .gen-mr/config.json file."
+        );
+    }
+
+    // Detect repository type from git remote
+    let repoInfo;
+    try {
+        repoInfo = await getRepositoryFromRemote(remoteName);
+    } catch (error) {
+        throw new Error(
+            `Failed to detect repository from git remote: ${error.message}. Make sure you're in a git repository with a '${remoteName}' remote configured.`
+        );
+    }
+
+    // Check repository type and provide appropriate suggestions
+    if (repoInfo.type === "github") {
+        throw new Error(
+            `GitHub repository detected (${repoInfo.fullName} on ${repoInfo.hostname}). For GitHub repositories, consider using gen-pr instead of gen-mr.`
+        );
+    } else if (repoInfo.type === "unknown") {
+        throw new Error(
+            `Unknown repository type detected (host: ${repoInfo.hostname}). This tool currently supports GitLab repositories only. For GitHub repositories, use gen-pr instead.`
+        );
+    } else if (repoInfo.type !== "gitlab") {
+        throw new Error(
+            `Unsupported repository type (host: ${repoInfo.hostname}). This tool supports GitLab repositories only.`
+        );
+    }
+
+    const gitlabRepo = repoInfo.fullName;
+
+    return {
+        gitlabRepo,
+        gitlabHost,
+        repoInfo,
+    };
+};
+
+/**
  * Validate that a local branch is in sync with its tracked remote branch
  * and return the remote-tracked branch name to use for GitHub operations.
  *
