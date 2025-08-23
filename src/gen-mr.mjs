@@ -10,7 +10,8 @@ import {
     editPullRequestContent,
     showCurrentConfig,
 } from "./config/common.mjs";
-import { configureChatGPTToken, showAiTokenConfigHelp } from "./ai/chatgpt.mjs";
+import { showAiTokenConfigHelp } from "./ai/chatgpt.mjs";
+import { createAiToken } from "./ai/create-ai-token.mjs";
 import { setChatGPTModel, showChatGPTModelsHelp, CHATGPT_MODELS } from "./ai/chatgpt.mjs";
 import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
 import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
@@ -96,30 +97,9 @@ const main = async () => {
     // Handle AI token configuration
     if (argv["create-ai-token"]) {
         const llmRaw = argv["create-ai-token"]; // expects a value like "ChatGPT"
-        const llm = String(llmRaw || "")
-            .trim()
-            .toLowerCase();
         const isGlobal = argv.global || argv.g;
-
-        const chatgptAliases = new Set(["chatgpt", "openai", "gpt", "gpt-3.5", "gpt-4", "gpt-4o"]);
-
-        if (!llm) {
-            throw new Error("Missing LLM argument. Example: gen-mr --create-ai-token ChatGPT");
-        }
-
-        try {
-            if (chatgptAliases.has(llm)) {
-                await configureChatGPTToken(isGlobal);
-            } else {
-                console.log("ℹ️  Try: gen-mr --create-ai-token ChatGPT");
-                throw new Error(
-                    `Unsupported LLM '${llmRaw}'. Only ChatGPT is implemented at the moment.`
-                );
-            }
-            return; // success
-        } catch (error) {
-            throw new Error(`AI token configuration failed: ${error.message}`);
-        }
+        await createAiToken({ llmRaw, isGlobal, toolName: "gen-mr" });
+        return; // success
     }
 
     // Handle editor configuration

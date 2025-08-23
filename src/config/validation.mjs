@@ -127,7 +127,6 @@ export const validateGitHubConfigAndRepository = async (remoteName) => {
     const githubRepo = repoInfo.fullName;
 
     return {
-        config,
         githubRepo,
         repoInfo,
     };
