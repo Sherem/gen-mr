@@ -9,8 +9,8 @@ import { showAiTokenConfigHelp } from "./ai/chatgpt.mjs";
 import { showChatGPTModelsHelp } from "./ai/chatgpt.mjs";
 import { showEditorConfigHelp } from "./config/editor-config.mjs";
 import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
-import { getCurrentBranch } from "./git-provider/git-provider.mjs";
 import { handleCommonCliFlags } from "./cli/common-cli-flags.mjs";
+import { validateArguments } from "./config/validation.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: { g: "global" },
@@ -94,43 +94,11 @@ const main = async () => {
         return;
     }
 
-    // Extract positional arguments with fallback behavior:
-    // - If two+ args: [source, target, tickets]
-    // - If one arg: [currentBranch, target, tickets]
-    // - If zero: error
-    let sourceBranch = positionalArgs[0];
-    let targetBranch = positionalArgs[1];
-    let jiraTickets = positionalArgs[2] || "";
-
-    if (!sourceBranch && !targetBranch && positionalArgs.length === 0) {
-        console.log("❌ Error: Missing required arguments");
-        console.log(
-            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
-        );
-        showUsage();
-        throw new Error("Missing required arguments");
-    }
-
-    if (positionalArgs.length === 1) {
-        try {
-            const current = await getCurrentBranch();
-            targetBranch = positionalArgs[0];
-            sourceBranch = current;
-            jiraTickets = "";
-        } catch (error) {
-            throw new Error(`Failed to detect current branch: ${error.message}`);
-        }
-    }
-
-    // Final required arguments check
-    if (!sourceBranch || !targetBranch) {
-        console.log("❌ Error: Missing required arguments");
-        console.log(
-            "💡 Provide either: <source> <target> or just <target> to use current branch as source"
-        );
-        showUsage();
-        throw new Error("Missing required arguments");
-    }
+    // Validate positional arguments using shared validation logic
+    const { sourceBranch, targetBranch, jiraTickets } = await validateArguments({
+        positionalArgs,
+        showUsage,
+    });
 
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     let config;
