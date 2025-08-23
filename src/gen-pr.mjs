@@ -3,19 +3,13 @@
 // CLI tool for creating GitHub pull requests with AI-generated name/description
 
 import minimist from "minimist";
-import { configureGithubToken, showTokenConfigHelp } from "./config/token-config.mjs";
-import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
-import { showCurrentConfig } from "./config/common.mjs";
-import {
-    showAiTokenConfigHelp,
-    setChatGPTModel,
-    showChatGPTModelsHelp,
-    CHATGPT_MODELS,
-} from "./ai/chatgpt.mjs";
-import { createAiToken } from "./ai/create-ai-token.mjs";
+import { showTokenConfigHelp } from "./config/token-config.mjs";
+import { showEditorConfigHelp } from "./config/editor-config.mjs";
+import { showAiTokenConfigHelp, showChatGPTModelsHelp } from "./ai/chatgpt.mjs";
 import { executePRWorkflow } from "./workflow.mjs";
 import { createGithubProvider } from "./repo-providers/github-provider.mjs";
 import { validateArguments, validateGitHubConfigAndRepository } from "./config/validation.mjs";
+import { handleCommonCliFlags } from "./cli/common-cli-flags.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: {
@@ -92,56 +86,9 @@ const main = async () => {
         return; // success path
     }
 
-    // Handle token configuration
-    if (argv["create-token"]) {
-        try {
-            await configureGithubToken(argv.global || argv.g);
-            return; // success
-        } catch (error) {
-            throw new Error(`Token configuration failed: ${error.message}`);
-        }
-    }
-
-    // Handle editor configuration
-    if (argv["configure-editor"]) {
-        try {
-            await configureEditor(argv.global || argv.g);
-            return; // success
-        } catch (error) {
-            throw new Error(`Editor configuration failed: ${error.message}`);
-        }
-    }
-
-    // Handle AI token configuration
-    if (argv["create-ai-token"]) {
-        const llmRaw = argv["create-ai-token"]; // expects a value like "ChatGPT"
-        const isGlobal = argv.global || argv.g;
-        await createAiToken({ llmRaw, isGlobal, toolName: "gen-pr" });
-        return; // success
-    }
-
-    // Handle model selection
-    if (argv["use-model"]) {
-        const modelRaw = argv["use-model"]; // expects a value like "gpt-4o"
-        const isGlobal = argv.global || argv.g;
-        try {
-            await setChatGPTModel(String(modelRaw), isGlobal);
-            return; // success
-        } catch (error) {
-            console.log("ℹ️  Supported models:", CHATGPT_MODELS.join(", "));
-            throw new Error(`Failed to set model: ${error.message}`);
-        }
-    }
-
-    // Handle show config
-    if (argv["show-config"]) {
-        const isGlobal = argv.global || argv.g;
-        try {
-            await showCurrentConfig(isGlobal);
-            return; // success
-        } catch (error) {
-            throw new Error(`Failed to show configuration: ${error.message}`);
-        }
+    // Handle all shared CLI flags
+    if (await handleCommonCliFlags({ argv, toolName: "gen-pr" })) {
+        return;
     }
 
     // Validate positional args and transform into structured args

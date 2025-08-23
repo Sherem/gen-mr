@@ -4,18 +4,13 @@
 
 import minimist from "minimist";
 import readline from "readline";
-import {
-    getConfig,
-    getEditorCommand,
-    editPullRequestContent,
-    showCurrentConfig,
-} from "./config/common.mjs";
+import { getConfig, getEditorCommand, editPullRequestContent } from "./config/common.mjs";
 import { showAiTokenConfigHelp } from "./ai/chatgpt.mjs";
-import { createAiToken } from "./ai/create-ai-token.mjs";
-import { setChatGPTModel, showChatGPTModelsHelp, CHATGPT_MODELS } from "./ai/chatgpt.mjs";
-import { configureEditor, showEditorConfigHelp } from "./config/editor-config.mjs";
+import { showChatGPTModelsHelp } from "./ai/chatgpt.mjs";
+import { showEditorConfigHelp } from "./config/editor-config.mjs";
 import { generateMergeRequestSafe, getDefaultPromptOptions } from "./merge-request-generator.mjs";
 import { getCurrentBranch } from "./git-provider/git-provider.mjs";
+import { handleCommonCliFlags } from "./cli/common-cli-flags.mjs";
 
 const argv = minimist(process.argv.slice(2), {
     alias: { g: "global" },
@@ -94,46 +89,9 @@ const main = async () => {
         return; // success
     }
 
-    // Handle AI token configuration
-    if (argv["create-ai-token"]) {
-        const llmRaw = argv["create-ai-token"]; // expects a value like "ChatGPT"
-        const isGlobal = argv.global || argv.g;
-        await createAiToken({ llmRaw, isGlobal, toolName: "gen-mr" });
-        return; // success
-    }
-
-    // Handle editor configuration
-    if (argv["configure-editor"]) {
-        try {
-            await configureEditor(argv.global || argv.g);
-            return; // success
-        } catch (error) {
-            throw new Error(`Editor configuration failed: ${error.message}`);
-        }
-    }
-
-    // Handle model selection
-    if (argv["use-model"]) {
-        const modelRaw = argv["use-model"]; // expects a value like "gpt-4o"
-        const isGlobal = argv.global || argv.g;
-        try {
-            await setChatGPTModel(String(modelRaw), isGlobal);
-            return; // success
-        } catch (error) {
-            console.log("ℹ️  Supported models:", CHATGPT_MODELS.join(", "));
-            throw new Error(`Failed to set model: ${error.message}`);
-        }
-    }
-
-    // Handle show config
-    if (argv["show-config"]) {
-        const isGlobal = argv.global || argv.g;
-        try {
-            await showCurrentConfig(isGlobal);
-            return; // success
-        } catch (error) {
-            throw new Error(`Failed to show configuration: ${error.message}`);
-        }
+    // Handle all shared CLI flags
+    if (await handleCommonCliFlags({ argv, toolName: "gen-mr" })) {
+        return;
     }
 
     // Extract positional arguments with fallback behavior:
