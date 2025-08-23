@@ -14,6 +14,7 @@ import {
     CHATGPT_MODELS,
 } from "./ai/chatgpt.mjs";
 import { executePRWorkflow } from "./workflow.mjs";
+import { createGithubProvider } from "./repo-providers/github-provider.mjs";
 import { validateArguments, validateGitHubConfigAndRepository } from "./config/validation.mjs";
 
 const argv = minimist(process.argv.slice(2), {
@@ -183,7 +184,8 @@ const main = async () => {
         throw new Error(error.message);
     }
 
-    await executePRWorkflow({ args, remoteName, config, repository: githubRepo });
+    const repoProvider = createGithubProvider({ githubToken: config.githubToken });
+    await executePRWorkflow({ args, remoteName, config, repository: githubRepo, repoProvider });
 };
 
 main().catch((error) => {

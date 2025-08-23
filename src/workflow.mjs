@@ -4,7 +4,6 @@
 import readline from "readline";
 import { getEditorCommand, editPullRequestContent, openInEditor } from "./config/common.mjs";
 import { validatePRInputAndBranches } from "./config/validation.mjs";
-import { createGithubProvider } from "./repo-providers/github-provider.mjs";
 import {
     generateMergeRequestSafe,
     getDefaultPromptOptions,
@@ -284,7 +283,12 @@ const handleUserInteraction = async (
  * @param {string} repository - Remote repository name in format "owner/repo"
  * @returns {Promise<void>}
  */
-export const executePRWorkflow = async ({ args, remoteName, config, repository }) => {
+export const executePRWorkflow = async ({ args, remoteName, config, repository, repoProvider }) => {
+    if (!repoProvider) {
+        throw new Error(
+            "repoProvider is required. Create it in the caller (e.g., createGithubProvider({ githubToken })) and pass it into executePRWorkflow."
+        );
+    }
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -302,8 +306,7 @@ export const executePRWorkflow = async ({ args, remoteName, config, repository }
             upstreamRemoteName,
         } = await validatePRInputAndBranches({ args, remoteName });
 
-        const { githubToken } = config;
-        const repoProvider = createGithubProvider({ githubToken });
+        const { githubToken } = config; // keep for compatibility with handleUserInteraction
 
         const promptOptions = getDefaultPromptOptions({
             includeGitDiff: true,
