@@ -6,9 +6,9 @@
  * @param {object} cfg
  * @param {string} cfg.githubToken - GitHub token for authentication
  * @returns {{
- *   postToGithub: (url: string, data: object) => Promise<object>,
- *   getFromGithub: (url: string) => Promise<object>,
- *   patchToGithub: (url: string, data: object) => Promise<object>,
+ *   postToRemoteRepo: (url: string, data: object) => Promise<object>,
+ *   getFromRemoteRepo: (url: string) => Promise<object>,
+ *   patchAtRemoteRepo: (url: string, data: object) => Promise<object>,
  *   findExistingPullRequest: (githubRepo: string, sourceBranch: string, targetBranch: string) => Promise<object|null>,
  *   createOrUpdatePullRequest: (opts: { githubRepo: string, sourceBranch: string, targetBranch: string, title: string, description: string, existingPR?: object|null }) => Promise<object>
  * }}
@@ -23,7 +23,7 @@ export const createGithubProvider = ({ githubToken }) => {
         Authorization: `token ${githubToken}`,
     };
 
-    const postToGithub = async (url, data) => {
+    const postToRemoteRepo = async (url, data) => {
         const response = await fetch(url, {
             method: "POST",
             headers: commonHeaders,
@@ -36,7 +36,7 @@ export const createGithubProvider = ({ githubToken }) => {
         return response.json();
     };
 
-    const getFromGithub = async (url) => {
+    const getFromRemoteRepo = async (url) => {
         const response = await fetch(url, {
             method: "GET",
             headers: commonHeaders,
@@ -48,7 +48,7 @@ export const createGithubProvider = ({ githubToken }) => {
         return response.json();
     };
 
-    const patchToGithub = async (url, data) => {
+    const patchAtRemoteRepo = async (url, data) => {
         const response = await fetch(url, {
             method: "PATCH",
             headers: commonHeaders,
@@ -63,7 +63,7 @@ export const createGithubProvider = ({ githubToken }) => {
 
     const findExistingPullRequest = async (githubRepo, sourceBranch, targetBranch) => {
         try {
-            const pulls = await getFromGithub(
+            const pulls = await getFromRemoteRepo(
                 `https://api.github.com/repos/${githubRepo}/pulls?state=open&head=${sourceBranch}&base=${targetBranch}`
             );
             return pulls.length > 0 ? pulls[0] : null;
@@ -83,7 +83,7 @@ export const createGithubProvider = ({ githubToken }) => {
     }) => {
         try {
             if (existingPR) {
-                const res = await patchToGithub(
+                const res = await patchAtRemoteRepo(
                     `https://api.github.com/repos/${githubRepo}/pulls/${existingPR.number}`,
                     {
                         title,
@@ -93,12 +93,15 @@ export const createGithubProvider = ({ githubToken }) => {
                 console.log("✅ Pull request updated:", res.html_url);
                 return res;
             } else {
-                const res = await postToGithub(`https://api.github.com/repos/${githubRepo}/pulls`, {
-                    head: sourceBranch,
-                    base: targetBranch,
-                    title,
-                    body: description,
-                });
+                const res = await postToRemoteRepo(
+                    `https://api.github.com/repos/${githubRepo}/pulls`,
+                    {
+                        head: sourceBranch,
+                        base: targetBranch,
+                        title,
+                        body: description,
+                    }
+                );
                 console.log("✅ Pull request created:", res.html_url);
                 return res;
             }
@@ -110,9 +113,9 @@ export const createGithubProvider = ({ githubToken }) => {
     };
 
     return {
-        postToGithub,
-        getFromGithub,
-        patchToGithub,
+        postToRemoteRepo,
+        getFromRemoteRepo,
+        patchAtRemoteRepo,
         findExistingPullRequest,
         createOrUpdatePullRequest,
     };

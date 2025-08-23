@@ -41,12 +41,12 @@ const mockFetchError = (message = "boom", status = 400) => {
 describe("github-provider HTTP helpers", () => {
     const token = "TOKEN123";
     const gh = createGithubProvider({ githubToken: token });
-    test("postToGithub sends POST with headers and body, returns JSON", async () => {
+    test("postToRemoteRepo sends POST with headers and body, returns JSON", async () => {
         const payload = { a: 1 };
         const response = { id: 123, ok: true };
         mockFetchOk(response);
 
-        const out = await gh.postToGithub("https://api.github.com/something", payload);
+        const out = await gh.postToRemoteRepo("https://api.github.com/something", payload);
 
         expect(out).toEqual(response);
         expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -60,17 +60,17 @@ describe("github-provider HTTP helpers", () => {
         expect(JSON.parse(init.body)).toEqual(payload);
     });
 
-    test("postToGithub throws with response text on error", async () => {
+    test("postToRemoteRepo throws with response text on error", async () => {
         mockFetchError("Bad Request", 400);
-        await expect(gh.postToGithub("https://api.github.com/something", { a: 1 })).rejects.toThrow(
-            "Bad Request"
-        );
+        await expect(
+            gh.postToRemoteRepo("https://api.github.com/something", { a: 1 })
+        ).rejects.toThrow("Bad Request");
     });
 
-    test("getFromGithub sends GET with headers, returns JSON", async () => {
+    test("getFromRemoteRepo sends GET with headers, returns JSON", async () => {
         const data = { items: [1, 2, 3] };
         mockFetchOk(data);
-        const out = await gh.getFromGithub("https://api.github.com/data");
+        const out = await gh.getFromRemoteRepo("https://api.github.com/data");
         expect(out).toEqual(data);
         const [, init] = global.fetch.mock.calls[0];
         expect(init.method).toBe("GET");
@@ -81,26 +81,28 @@ describe("github-provider HTTP helpers", () => {
         expect(init.body).toBeUndefined();
     });
 
-    test("getFromGithub throws on non-ok", async () => {
+    test("getFromRemoteRepo throws on non-ok", async () => {
         mockFetchError("Not Found", 404);
-        await expect(gh.getFromGithub("https://api.github.com/none")).rejects.toThrow("Not Found");
+        await expect(gh.getFromRemoteRepo("https://api.github.com/none")).rejects.toThrow(
+            "Not Found"
+        );
     });
 
-    test("patchToGithub sends PATCH and returns JSON", async () => {
+    test("patchAtRemoteRepo sends PATCH and returns JSON", async () => {
         const payload = { title: "New" };
         const resp = { id: 7, title: "New" };
         mockFetchOk(resp);
-        const out = await gh.patchToGithub("https://api.github.com/pulls/1", payload);
+        const out = await gh.patchAtRemoteRepo("https://api.github.com/pulls/1", payload);
         expect(out).toEqual(resp);
         const [, init] = global.fetch.mock.calls[0];
         expect(init.method).toBe("PATCH");
         expect(JSON.parse(init.body)).toEqual(payload);
     });
 
-    test("patchToGithub throws on error", async () => {
+    test("patchAtRemoteRepo throws on error", async () => {
         mockFetchError("Update failed", 422);
         await expect(
-            gh.patchToGithub("https://api.github.com/pulls/1", { title: "X" })
+            gh.patchAtRemoteRepo("https://api.github.com/pulls/1", { title: "X" })
         ).rejects.toThrow("Update failed");
     });
 });
